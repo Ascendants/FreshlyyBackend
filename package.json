@@ -1,0 +1,30 @@
+{
+  "name": "freshlyybackend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ascendants/FreshlyyBackend.git"
+  },
+  "author": "Ascendants",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ascendants/FreshlyyBackend/issues"
+  },
+  "homepage": "https://github.com/Ascendants/FreshlyyBackend#readme",
+  "dependencies": {
+    "body-parser": "^1.20.1",
+    "express": "^4.18.2",
+    "express-handlebars": "^6.0.6",
+    "mongodb": "^4.13.0",
+    "mongoose": "^6.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
