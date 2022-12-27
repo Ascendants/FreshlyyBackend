@@ -16,10 +16,21 @@ app.use(cors(corsOptions));
 app.options('*', cors());
 app.use(bodyParser.json({ type: 'application/json' }));
 
+const publicRoutes = require('./routes/public');
 const errorController = require('./controllers/error');
 
 //put your routes here
+app.use('/public', publicRoutes);
 
 app.use(errorController.get404);
 
-app.listen(process.env.PORT);
+mongoose.set('strictQuery', true);
+mongoose
+  .connect(
+    'mongodb+srv://haritha:guzmot@practise.p4xqvt5.mongodb.net/practisedb?retryWrites=true&w=majority'
+  )
+  .then((result) => {
+    console.log('Ready');
+    app.listen(process.env.PORT);
+  })
+  .catch((err) => console.log(err));
