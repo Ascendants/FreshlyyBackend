@@ -7,7 +7,6 @@ const app = express();
 const cors = require('cors');
 
 // const adminRoutes = require('./routes/admin');
-// const shopRoutes = require('./routes/shop');
 const corsOptions = {
   origin: process.env.CLIENT,
   credentials: true,
@@ -17,18 +16,18 @@ app.options('*', cors());
 app.use(bodyParser.json({ type: 'application/json' }));
 
 const publicRoutes = require('./routes/public');
+const customerRoutes = require('./routes/customer');
 const errorController = require('./controllers/error');
 
 //put your routes here
 app.use('/public', publicRoutes);
+app.use('/customer', customerRoutes);
 
 app.use(errorController.get404);
 
 mongoose.set('strictQuery', true);
 mongoose
-  .connect(
-    'mongodb+srv://haritha:guzmot@practise.p4xqvt5.mongodb.net/practisedb?retryWrites=true&w=majority'
-  )
+  .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
     app.listen(process.env.PORT);
