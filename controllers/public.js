@@ -47,19 +47,19 @@ exports.createUser = async (req, res, next) => {
 exports.createProduct = async (req, res, next) => {
   const user = await User.findOne({ email: 'haritha@hasathcharu.com' });
   const product = new Product({
-    title: 'Sri Lankan Carrots',
+    title: 'Green Beans',
     status: 'Live',
     description:
-      "I dug these bad boys up just today morning from my farm. I'll deliver them for you real quick so that the freshness of them will be intact!",
-    price: 1250,
-    overallRating: 4,
+      'I plucked them freshly today morning. These are the best green beans you can get on the platform',
+    price: 500,
+    overallRating: 3,
     minQtyIncrement: 0.5,
     unit: 'KG',
     farmer: user,
     imageUrls: [
-      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa',
-      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_2.jpg?alt=media&token=80fed965-d9e7-42de-b90b-911d96f8e279',
-      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_3.jpg?alt=media&token=5281e933-bcb7-48f6-955d-034d2b53fd35',
+      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2Fpexels-yulia-rozanova-3004798.jpg?alt=media&token=6d37f317-93fb-4e41-bae8-d07380424f62',
+      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2Fpexels-antony-trivet-12974525%202.jpg?alt=media&token=e69399ba-fd6c-4b57-80cc-2971e8591200',
+      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2Fpexels-andrÃ©-beltrame-1680585%202.jpg?alt=media&token=99581525-51de-4997-bd2a-d000be5a1e26',
     ],
   });
   product.publicUrl = (
