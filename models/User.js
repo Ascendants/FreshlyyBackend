@@ -1,8 +1,7 @@
+const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const Farmer = require('./Farmer');
-const Customer = require('./Customer');
-const Administrator = require('./Administrator');
+const Location = require('./Location');
 const userSchema = new Schema({
   fname: {
     type: String,
@@ -46,14 +45,93 @@ const userSchema = new Schema({
     type: String,
     required: true,
   },
-  farmer: {
-    type: Farmer.schema,
-  },
-  customer: {
-    type: Customer.schema,
-  },
-  administrator: {
-    type: Administrator.schema,
+  farmer: new Schema(
+    {
+      occupation: {
+        type: String,
+        required: true,
+      },
+      hasVehicle: {
+        type: Boolean,
+        required: true,
+        default: false,
+      },
+      maxDeliDistance: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      nicUrl: {
+        type: String,
+        required: true,
+      },
+      deliveryCharge: {
+        type: Number,
+        required: true,
+        default: 50,
+      },
+      saleLocation: {
+        type: [Location],
+      },
+    },
+    { _id: false }
+  ),
+  customer: new Schema(
+    {
+      slctdLocation: {
+        type: Location,
+      },
+      locations: {
+        type: [Location],
+      },
+      cart: [
+        new Schema(
+          {
+            farmer: {
+              type: ObjectId,
+              required: true,
+            },
+            distance: {
+              type: Number,
+              required: true,
+              default: 0,
+            },
+            costPerKM: {
+              type: Number,
+              required: true,
+              default: 0,
+            },
+            items: [
+              new Schema(
+                {
+                  item: {
+                    type: ObjectId,
+                    required: true,
+                  },
+                  qty: {
+                    type: Number,
+                    required: true,
+                  },
+                  dateAdded: {
+                    type: Date,
+                    required: true,
+                    default: () => new Date(),
+                  },
+                },
+                { _id: false }
+              ),
+            ],
+          },
+          { _id: false }
+        ),
+      ],
+    },
+    { _id: false }
+  ),
+  accessLevel: {
+    type: String,
+    required: true,
+    default: 'Customer',
   },
   dateAdded: {
     type: Date,

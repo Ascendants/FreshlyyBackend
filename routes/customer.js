@@ -4,6 +4,8 @@ const customerController = require('../controllers/customer');
 
 const router = express.Router();
 
-router.put('/place-order/', customerController.putOrder);
+router.post('/place-order/', customerController.postOrder);
+
+router.get('/cart/', customerController.getCart);
 
 module.exports = router;
