@@ -14,12 +14,29 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors());
 app.use(bodyParser.json({ type: 'application/json' }));
+const User = require('./models/User');
+const Config = require('./models/Config');
 
 const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
 const errorController = require('./controllers/error');
 
 //put your routes here
+app.use('/', async (req, res, next) => {
+  try {
+    let config = await Config.findOne({});
+    if (!config) {
+      config = new Config();
+      await config.save();
+    }
+    req.config = config;
+    const user = req.headers.useremail;
+    req.user = await User.findOne({ email: user });
+    next();
+  } catch (err) {
+    console.log(err);
+  }
+});
 app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 
