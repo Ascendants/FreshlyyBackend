@@ -10,6 +10,7 @@ const productSchema = new Schema({
     type: String,
     required: true,
     default: 'Quarantined',
+    enum: ['Quarantined', 'Live', 'Paused', 'Deleted'],
   },
   description: {
     type: String,
