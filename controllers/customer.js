@@ -36,7 +36,7 @@ exports.postOrder = async (req, res, next) => {
         customer: ObjectId(req.user),
         isDelivery: isDelivery,
       });
-
+      order.totalDeliveryCharge = 0;
       if (isDelivery) {
         order.deliveryDistance = farmerItem.distance;
         order.deliveryCostPerKM = farmerItem.costPerKM;
@@ -74,10 +74,11 @@ exports.postOrder = async (req, res, next) => {
         total += cartItem.qty * result.price;
       }
       order.totalPrice = total;
+      order.farmerName = (await User.findById(farmerItem.farmer)).fname;
       await order.save({ session });
       orders.push(order);
     }
-    session.abortTransaction();
+    session.abortTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
@@ -86,6 +87,54 @@ exports.postOrder = async (req, res, next) => {
     return;
   }
 };
+
+exports.postPayment = async (req, res, next) => {
+  const payFrom = req.body.payFrom; //retrieves what orders the customer wants to get delivered
+  const orders = req.body.orders;
+  const cvv = req.body.cvv;
+  const session = await mongoose.startSession();
+  if (!payFrom || !orders || !Array.isArray(orders)) {
+    res.status(400).json({ message: 'Bad Request' });
+    return;
+  }
+  if (payFrom != 'cod' && !cvv) {
+    res.status(400).json({ message: 'Missing CVV' });
+    return;
+  }
+
+  try {
+    session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
+    for (let orderId of orders) {
+      const order = await Order.findById(orderId).session(session);
+      let total = order.totalPrice + order.totalDeliveryCharge;
+      let totalPaid = 0;
+      for (pay in order.payment) {
+        if (pay.status == 'Success') totalPaid += pay.amount;
+      }
+      const totalToPay = total - totalPaid; //get outstanding balance to be paid
+      if (payFrom == 'cod') {
+        order.payment.push({
+          type: 'COD',
+          status: 'Success',
+          amount: totalToPay,
+        });
+      } else {
+        //code for payment gateway...
+        console.log('Make payment gateway api call');
+      }
+      order.orderUpdate.payment = new Date();
+      await order.save({ session });
+    }
+    session.abortTransaction(); //change this to commit
+    res.status(200).json({ message: 'Success', orderDetails: orders });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
   const cart = req.user.customer.cart.toObject();
@@ -107,6 +156,24 @@ exports.getCart = async (req, res, next) => {
       }
     }
     res.status(200).json({ message: 'Success', cart: cart });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+exports.getCards = async (req, res, next) => {
+  const cards = req.user.customer.paymentMethods;
+  if (!cards) {
+    res.status(200).json({ message: 'Success', cards: null });
+  }
+  const cardIds = [];
+  try {
+    for (let card in cards) {
+      cardIds.push({ cardName: cards[card].CardName, cardId: cards[card]._id });
+    }
+    res.status(200).json({ message: 'Success', cards: cardIds });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
     logger(error);

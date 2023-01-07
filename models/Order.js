@@ -7,6 +7,10 @@ const orderSchema = new Schema({
     type: ObjectId,
     required: true,
   },
+  farmerName: {
+    type: String,
+    required: true,
+  },
   customer: {
     type: ObjectId,
     required: true,
@@ -93,10 +97,11 @@ const orderSchema = new Schema({
     new Schema({
       type: {
         type: String,
+        enum: ['Card', 'COD', 'Coupon'],
         required: true,
-        default: 'cod',
+        default: 'COD',
       },
-      cardNo: {
+      cardRef: {
         type: String,
       },
       couponCode: {
@@ -109,6 +114,7 @@ const orderSchema = new Schema({
       status: {
         type: String,
         required: true,
+        enum: ['Success', 'Fail'],
       },
     }),
   ],

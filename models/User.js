@@ -34,6 +34,7 @@ const userSchema = new Schema({
     type: String,
     required: true,
     default: 'Active',
+    enum: ['Active', 'Suspended', 'Deleted', 'Banned'],
   },
   profilePicUrl: {
     type: String,
@@ -125,6 +126,21 @@ const userSchema = new Schema({
           { _id: false }
         ),
       ],
+      paymentMethods: [
+        new Schema({
+          CardNo: { type: String, required: true },
+          CardHolderName: { type: String, required: true },
+          Status: { type: String, required: true, enum: ['Active', 'Deleted'] },
+          ExpiryDate: { type: Date, required: true },
+          CVV: { type: Number, required: true },
+          CardName: { type: String },
+          CardType: {
+            type: String,
+            required: true,
+            enum: ['Visa', 'Master', 'Amex'],
+          },
+        }),
+      ],
     },
     { _id: false }
   ),
@@ -132,6 +148,7 @@ const userSchema = new Schema({
     type: String,
     required: true,
     default: 'Customer',
+    enum: ['Customer', 'Farmer', 'Admin', 'SAdmin'],
   },
   dateAdded: {
     type: Date,
