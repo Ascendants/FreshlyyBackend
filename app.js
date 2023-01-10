@@ -38,6 +38,11 @@ app.use('/', async (req, res, next) => {
     console.log(err);
   }
 });
+
+app.use('/test', async (req, res, next) => {
+  console.log(req.query);
+});
+
 app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
