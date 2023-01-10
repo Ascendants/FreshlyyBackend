@@ -19,6 +19,7 @@ const Config = require('./models/Config');
 
 const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
+const farmerRoutes = require('./routes/farmer');
 const errorController = require('./controllers/error');
 
 //put your routes here
@@ -39,6 +40,7 @@ app.use('/', async (req, res, next) => {
 });
 app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
+app.use('/farmer', farmerRoutes);
 
 app.use(errorController.get404);
 
