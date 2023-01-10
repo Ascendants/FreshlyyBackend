@@ -62,7 +62,7 @@ exports.postOrder = async (req, res, next) => {
           { new: true, session: session }
         );
         if (!result) {
-          throw new Error('One or more items are not available.');
+          throw new Error('Not Available');
           //if one of them fails, abort the transaction by throwing an error
         }
         order.items.push({
@@ -78,7 +78,7 @@ exports.postOrder = async (req, res, next) => {
       await order.save({ session });
       orders.push(order);
     }
-    session.abortTransaction(); //change this to commit
+    session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
@@ -125,7 +125,7 @@ exports.postPayment = async (req, res, next) => {
       order.orderUpdate.payment = new Date();
       await order.save({ session });
     }
-    session.abortTransaction(); //change this to commit
+    session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
