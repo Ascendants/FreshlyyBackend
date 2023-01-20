@@ -5,6 +5,72 @@ const Order = require('../models/Order');
 const mongoose = require('mongoose');
 const { ObjectId } = require('mongodb');
 
+exports.getDashboard = async (req, res, next) => {
+  const user = {
+    fname: req.user.fname,
+    lname: req.user.lname,
+    email: req.user.email,
+    profilePicUrl: req.user.profilePicUrl,
+  };
+  const toPay = await Order.countDocuments({
+    customer: req.user._id,
+    'orderUpdate.payment': null,
+  });
+  const toProcess = await Order.countDocuments({
+    customer: req.user._id,
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': null,
+  });
+  const toShip = await Order.countDocuments({
+    customer: req.user._id,
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.shipped': null,
+    isDelivery: true,
+  });
+  const toReceive = await Order.countDocuments({
+    customer: req.user._id,
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.shipped': { $ne: null },
+    'orderUpdate.delivered': null,
+  });
+  const toPickup = await Order.countDocuments({
+    customer: req.user._id,
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.pickedUp': null,
+    isDelivery: false,
+  });
+  const toReview =
+    (await Order.countDocuments({
+      customer: req.user._id,
+      farmerRating: -1,
+      deliveryRating: -1,
+      'orderUpdate.pickedUp': { $ne: null },
+    })) +
+    (await Order.countDocuments({
+      customer: req.user._id,
+      farmerRating: -1,
+      deliveryRating: -1,
+      'orderUpdate.delivered': { $ne: null },
+    }));
+  const all = await Order.countDocuments({
+    customer: req.user._id,
+  });
+  res.status(200).json({
+    message: 'Success',
+    user: user,
+    toPay: toPay,
+    toProcess: toProcess,
+    toShip: toShip,
+    toReceive: toReceive,
+    toPickup: toPickup,
+    all: all,
+    toReview: toReview,
+  });
+};
+
 exports.postOrder = async (req, res, next) => {
   const deliveryCharges = req.body.deliveryCharges; //retrieves what orders the customer wants to get delivered
   const session = await mongoose.startSession();
