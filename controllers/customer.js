@@ -230,14 +230,27 @@ exports.getCart = async (req, res, next) => {
 };
 
 exports.getCards = async (req, res, next) => {
-  const cards = req.user.customer.paymentMethods;
+  const cards = req.user.customer.paymentMethods.filter(
+    (item) => item.Status == 'Active'
+  );
   if (!cards) {
     res.status(200).json({ message: 'Success', cards: null });
   }
   const cardIds = [];
   try {
     for (let card in cards) {
-      cardIds.push({ cardName: cards[card].CardName, cardId: cards[card]._id });
+      cardIds.push({
+        cardName: cards[card].CardName,
+        cardId: cards[card]._id,
+        cardNo: cards[card].CardNo.replace(
+          cards[card].CardNo.substring(4, 12),
+          '********'
+        )
+          .match(/.{1,4}/g)
+          .join(' '),
+        cardExp: cards[card].ExpiryDate,
+        cardType: cards[card].CardType,
+      });
     }
     res.status(200).json({ message: 'Success', cards: cardIds });
   } catch (error) {
