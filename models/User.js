@@ -130,8 +130,14 @@ const userSchema = new Schema({
         new Schema({
           CardNo: { type: String, required: true },
           CardHolderName: { type: String, required: true },
-          Status: { type: String, required: true, enum: ['Active', 'Deleted'] },
-          ExpiryDate: { type: Date, required: true },
+          Status: {
+            type: String,
+            required: true,
+            enum: ['Active', 'Deleted'],
+            default: 'Active',
+          },
+
+          ExpiryDate: { type: String, required: true },
           CardName: { type: String },
           CardType: {
             type: String,

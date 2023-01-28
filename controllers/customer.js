@@ -1,10 +1,16 @@
 const Product = require('../models/Product');
+const { validationResult } = require('express-validator');
 const { logger } = require('../util/logger');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const mongoose = require('mongoose');
 const { ObjectId } = require('mongodb');
-
+const cardTypes = {
+  visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
+  master:
+    /^(5[1-5][0-9]{14}|2(22[1-9][0-9]{12}|2[3-9][0-9]{13}|[3-6][0-9]{14}|7[0-1][0-9]{13}|720[0-9]{12}))$/,
+  amex: /^3[47][0-9]{13}$/,
+};
 exports.getDashboard = async (req, res, next) => {
   const user = {
     fname: req.user.fname,
@@ -255,6 +261,72 @@ exports.getCards = async (req, res, next) => {
     res.status(200).json({ message: 'Success', cards: cardIds });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+exports.postSaveCard = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty())
+    return res.status(422).json({ message: 'Vaildation Error' });
+  const { CardNumber, Nickname, CardHolderName, CVV, ExpiryDate } = req.body;
+  let cardType = 'Amex';
+  if (cardTypes.visa.test(CardNumber)) {
+    cardType = 'Visa';
+  } else if (cardTypes.master.test(CardNumber)) {
+    cardType = 'Master';
+  }
+  try {
+    req.user.customer.paymentMethods.push({
+      CardNo: CardNumber,
+      CardHolderName: CardHolderName,
+      ExpiryDate: ExpiryDate,
+      CardName: Nickname,
+      CardType: cardType,
+    });
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
+exports.deleteRemoveCard = async (req, res, next) => {
+  const cardId = req.params.cardId;
+  try {
+    req.user.customer.paymentMethods.forEach((card) => {
+      if (card._id == cardId) {
+        card.Status = 'Deleted';
+      }
+    });
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
+exports.postEditCard = async (req, res, next) => {
+  const cardId = req.params.cardId;
+  const errors = validationResult(req);
+  if (!errors.isEmpty())
+    return res.status(422).json({ message: 'Vaildation Error' });
+  const { Nickname } = req.body;
+  try {
+    req.user.customer.paymentMethods.forEach((card) => {
+      if (card._id == cardId) {
+        card.CardName = Nickname;
+      }
+    });
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
     logger(error);
     return;
   }
