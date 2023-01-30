@@ -46,6 +46,11 @@ const userSchema = new Schema({
     type: String,
     required: true,
   },
+  stripeId: {
+    type: String,
+    required: true,
+    default: 'null',
+  },
   farmer: new Schema(
     {
       occupation: {
@@ -125,26 +130,6 @@ const userSchema = new Schema({
           },
           { _id: false }
         ),
-      ],
-      paymentMethods: [
-        new Schema({
-          CardNo: { type: String, required: true },
-          CardHolderName: { type: String, required: true },
-          Status: {
-            type: String,
-            required: true,
-            enum: ['Active', 'Deleted'],
-            default: 'Active',
-          },
-
-          ExpiryDate: { type: String, required: true },
-          CardName: { type: String },
-          CardType: {
-            type: String,
-            required: true,
-            enum: ['Visa', 'Master', 'Amex'],
-          },
-        }),
       ],
     },
     { _id: false }
