@@ -14,4 +14,8 @@ router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
 
+router.get('/main-page', customerController.getProducts);
+
+
+
 module.exports = router;
