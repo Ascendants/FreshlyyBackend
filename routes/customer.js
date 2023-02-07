@@ -55,4 +55,6 @@ router.post(
   customerController.postEditCard
 );
 
+router.get('/get-order/:orderId', customerController.getOrderDetails);
+
 module.exports = router;

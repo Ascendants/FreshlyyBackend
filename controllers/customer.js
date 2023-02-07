@@ -331,3 +331,37 @@ exports.postEditCard = async (req, res, next) => {
     return;
   }
 };
+
+exports.getOrderDetails = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      customer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
+
+    const orderData = order.toObject();
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
