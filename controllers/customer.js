@@ -4,6 +4,7 @@ const { logger } = require('../util/logger');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const mongoose = require('mongoose');
+const moment = require('moment');
 const { ObjectId } = require('mongodb');
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -21,14 +22,17 @@ exports.getDashboard = async (req, res, next) => {
   const toPay = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.payment': null,
+    'orderUpdate.failed': { $eq: null },
   });
   const toProcess = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': null,
   });
   const toShip = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': null,
@@ -36,6 +40,7 @@ exports.getDashboard = async (req, res, next) => {
   });
   const toReceive = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': { $ne: null },
@@ -43,6 +48,7 @@ exports.getDashboard = async (req, res, next) => {
   });
   const toPickup = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.pickedUp': null,
@@ -54,15 +60,18 @@ exports.getDashboard = async (req, res, next) => {
       farmerRating: -1,
       deliveryRating: -1,
       'orderUpdate.pickedUp': { $ne: null },
+      'orderUpdate.failed': { $eq: null },
     })) +
     (await Order.countDocuments({
       customer: req.user._id,
       farmerRating: -1,
       deliveryRating: -1,
       'orderUpdate.delivered': { $ne: null },
+      'orderUpdate.failed': { $eq: null },
     }));
   const all = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
   });
   res.status(200).json({
     message: 'Success',
@@ -358,6 +367,154 @@ exports.getOrderDetails = async (req, res, next) => {
   } catch (error) {
     logger(error);
     if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+exports.getOrders = async (req, res, next) => {
+  const type = req.params.type;
+  if (!type) {
+    return res.status(422).json({ message: 'Vaildation Error' });
+  }
+  try {
+    let orders;
+
+    switch (type) {
+      case 'all':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        });
+        break;
+      case 'to-pay':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': null,
+          customer: req.user._id,
+        });
+        break;
+      case 'processing':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': null,
+          customer: req.user._id,
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            'orderUpdate.failed': { $eq: null },
+            'orderUpdate.payment': { $ne: null },
+            'orderUpdate.processed': { $ne: null },
+            'orderUpdate.shipped': null,
+            isDelivery: true,
+            customer: req.user._id,
+          })),
+        ];
+        break;
+      case 'to-pickup':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.pickedUp': null,
+          isDelivery: false,
+          customer: req.user._id,
+        });
+        break;
+      case 'shipped':
+        orders = await Order.find({
+          customer: req.user._id,
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.shipped': { $ne: null },
+          'orderUpdate.delivered': null,
+        });
+        break;
+      case 'to-review':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: -1,
+          deliveryRating: -1,
+          'orderUpdate.delivered': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            customer: req.user._id,
+            farmerRating: -1,
+            deliveryRating: -1,
+            'orderUpdate.pickedUp': { $ne: null },
+            'orderUpdate.failed': { $eq: null },
+          })),
+        ];
+        break;
+      case 'completed':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: { $ne: -1 },
+          deliveryRating: { $ne: -1 },
+          'orderUpdate.failed': { $eq: null },
+        });
+        break;
+      default:
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        });
+        break;
+    }
+
+    if (!this.getOrderDetails) {
+      throw new Error('No Orders');
+    }
+    let orderData = [];
+    orders.forEach((order) => {
+      let status = 'to-pay';
+      if (!order.orderUpdate.payment) {
+        status = 'to-pay';
+      } else if (
+        !order.orderUpdate.processed ||
+        (order.orderUpdate.processed &&
+          order.isDelivery &&
+          !order.orderUpdate.shipped)
+      ) {
+        status = 'processing';
+      } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
+        status = 'shipped';
+      } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
+        status = 'to-pickup';
+      } else if (
+        (order.orderUpdate.delivered || order.orderUpdate.pickedUp) &&
+        order.farmerRating == -1
+      ) {
+        status = 'to-review';
+      } else if (order.farmerRating != -1) {
+        status = 'completed';
+      }
+      orderData.push({
+        farmerName: order.farmerName,
+        orderId: order._id,
+        orderPlaced: order.orderUpdate.placed
+          ? moment(order.orderUpdate.placed).format('YYYY-MM-DD')
+          : null,
+        orderPaid: order.orderUpdate.payment
+          ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
+          : null,
+        orderTotal: order.totalPrice + order.totalDeliveryCharge,
+        status: status,
+      });
+    });
+    res.status(200).json({ message: 'Success', orders: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'No Orders') {
       res.status(404).json({ message: error.message });
       return;
     }
