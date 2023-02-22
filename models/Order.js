@@ -101,7 +101,7 @@ const orderSchema = new Schema({
         required: true,
         default: 'COD',
       },
-      cardRef: {
+      payRef: {
         type: String,
       },
       couponCode: {
@@ -114,7 +114,7 @@ const orderSchema = new Schema({
       status: {
         type: String,
         required: true,
-        enum: ['Success', 'Fail'],
+        enum: ['Success', 'Fail', 'Pending'],
       },
     }),
   ],
