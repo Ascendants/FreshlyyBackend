@@ -250,9 +250,8 @@ exports.getCards = async (req, res, next) => {
 exports.getProducts = async (req, res, next) => {
   Product.find().populate({path:'farmer',populate:{path:'farmer'}}).then(products=>{
     const dataToSend=[];
-    console.log(products)
+
     for(let prod of products){
-      
       const data={};
       data["_id"]=prod._id;
       data["title"]=prod.title
@@ -262,14 +261,29 @@ exports.getProducts = async (req, res, next) => {
       data["unit"]=prod.unit
       data["farmer"]=prod.farmer
       data["description"]=prod.description
-      dataToSend.push(data)
+      data["likes"]=prod.likes
+      dataToSend.push(data) 
 
     }
-    res.status(200).send({message:"success",products:dataToSend})
-
-      
+   
+    res.status(200).send({message:"success",products:dataToSend}) 
     
   }).catch(err=>{
     res.status(500).send(err)
   })
 };
+
+exports.postLike=async(req,res,next)=>{
+  try {
+    console.log("I came here")
+    const product = await Product.findByIdAndUpdate(
+      req.params.productId,
+      { $push: { likes: req.body.email } },
+      { new: true }
+    );
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+  
+}

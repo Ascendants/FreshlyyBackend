@@ -8,6 +8,8 @@ router.post('/place-order/', customerController.postOrder);
 
 router.post('/payment/', customerController.postPayment);
 
+router.post('/:productId/like',customerController.postLike);
+
 router.get('/cart/', customerController.getCart);
 
 router.get('/cards/', customerController.getCards);
