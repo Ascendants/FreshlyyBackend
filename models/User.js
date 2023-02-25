@@ -37,10 +37,25 @@ const userSchema = new Schema({
     enum: ['Active', 'Suspended', 'Deleted', 'Banned'],
   },
   profilePicUrl: {
-    type: String,
+    type: new Schema(
+      {
+        imageUrl: {
+          type: String,
+          required: true,
+        },
+        placeholder: {
+          type: String,
+          required: true,
+        },
+      },
+      { _id: false }
+    ),
     required: true,
-    default:
-      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fuser.svg?alt=media&token=e71a192a-5c46-4025-b1f9-1391c7ad05ac',
+    default: {
+      imageUrl:
+        'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fuser.svg?alt=media&token=e71a192a-5c46-4025-b1f9-1391c7ad05ac',
+      blurHash: 'LDH{HBt600Rj0LWB_3ofXNjs_Mj[',
+    },
   },
   bAddress: {
     type: String,
