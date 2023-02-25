@@ -294,6 +294,7 @@ exports.getCreateStripeCustomer = async (req, res, next) => {
 
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
+  // console.log('Hello');
   const cart = req.user.customer.cart.toObject();
   if (!cart) {
     res.status(200).json({ message: 'Success', cart: null });
