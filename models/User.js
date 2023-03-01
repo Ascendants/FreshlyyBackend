@@ -92,7 +92,7 @@ const userSchema = new Schema({
         default: 50,
       },
       saleLocation: {
-        type: [Location],
+        type:Location,
       },
     },
     { _id: false }
