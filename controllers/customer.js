@@ -323,7 +323,6 @@ exports.getCart = async (req, res, next) => {
 
 exports.postCart = async (req, res) => {
   let { productId, quantity } = req.body;
-
   quantity = parseFloat(quantity);
   const product = await Product.findById(productId);
   const cart = req.user.customer.cart;
@@ -331,46 +330,49 @@ exports.postCart = async (req, res) => {
   if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
-  if(product.qtyAvailable < quantity){
+  if (product.qtyAvailable < quantity) {
     return res.status(404).json({ message: 'Quantity Unavailable' });
   }
   let cartItem;
-  cart.forEach((farmer)=>{
-    farmer.items.forEach((item)=>{
-      if(item.item==productId){
-        cartItem=item;
+  cart.forEach((farmer) => {
+    farmer.items.forEach((item) => {
+      if (item.item == productId) {
+        cartItem = item;
       }
     });
   });
-  if(cartItem){
-    if(product.qtyAvailable < quantity){
-      cartItem.qty+=quantity;
+  if (cartItem) {
+    if (product.qtyAvailable < quantity) {
+      cartItem.qty += quantity;
       req.user.save();
-      return res.status(200).json({message:'Success'});
+      return res.status(200).json({ message: 'Success' });
     }
     return res.status(404).json({ message: 'Quantity unavailable' });
   }
-  let farmer = cart.find(farmer=>farmer.farmer==product.farmer);
-  if(farmer){
+  let farmer = cart.find((farmer) => farmer.farmer == product.farmer);
+  if (farmer) {
     farmer.items.push({
-      item:product._id,
+      item: product._id,
       qty: quantity,
-    })
-    req.user.save();
-    return res.status(200).json({message:"Success"});
-  }
-
-    cart.push({
-      farmer:product.farmer,
-      distance:3,
-      costPerKM:200,
-      items:[{
-        item:product._id,
-        qty: quantity,
-      }]
     });
     req.user.save();
-    return res.status(200).json({message:"Success"});
+    return res.status(200).json({ message: 'Success' });
+  }
+
+  cart.push({
+    farmer: product.farmer,
+    distance: 3,
+    costPerKM: 200,
+    items: [
+      {
+        item: product._id,
+        qty: quantity,
+      },
+    ],
+  });
+  console.log(req.user.customer.cart);
+  req.user.save();
+  return res.status(200).json({ message: 'Success' });
 };
 
 exports.getCards = async (req, res, next) => {
