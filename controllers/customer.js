@@ -4,6 +4,7 @@ const { logger } = require('../util/logger');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const mongoose = require('mongoose');
+const moment = require('moment');
 const { ObjectId } = require('mongodb');
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -21,14 +22,17 @@ exports.getDashboard = async (req, res, next) => {
   const toPay = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.payment': null,
+    'orderUpdate.failed': { $eq: null },
   });
   const toProcess = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': null,
   });
   const toShip = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': null,
@@ -36,6 +40,7 @@ exports.getDashboard = async (req, res, next) => {
   });
   const toReceive = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': { $ne: null },
@@ -43,6 +48,7 @@ exports.getDashboard = async (req, res, next) => {
   });
   const toPickup = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.pickedUp': null,
@@ -54,15 +60,18 @@ exports.getDashboard = async (req, res, next) => {
       farmerRating: -1,
       deliveryRating: -1,
       'orderUpdate.pickedUp': { $ne: null },
+      'orderUpdate.failed': { $eq: null },
     })) +
     (await Order.countDocuments({
       customer: req.user._id,
       farmerRating: -1,
       deliveryRating: -1,
       'orderUpdate.delivered': { $ne: null },
+      'orderUpdate.failed': { $eq: null },
     }));
   const all = await Order.countDocuments({
     customer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
   });
   res.status(200).json({
     message: 'Success',
@@ -161,20 +170,17 @@ exports.postOrder = async (req, res, next) => {
 };
 
 exports.postPayment = async (req, res, next) => {
-  const payFrom = req.body.payFrom; //retrieves what orders the customer wants to get delivered
+  const payFrom = req.body.payFrom;
   const orders = req.body.orders;
-  const cvv = req.body.cvv;
+  const saveCard = req.body.saveCard;
   const session = await mongoose.startSession();
   if (!payFrom || !orders || !Array.isArray(orders)) {
     res.status(400).json({ message: 'Bad Request' });
     return;
   }
-  if (payFrom != 'cod' && !cvv) {
-    res.status(400).json({ message: 'Missing CVV' });
-    return;
-  }
 
   try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
     for (let orderId of orders) {
       const order = await Order.findById(orderId).session(session);
@@ -190,18 +196,97 @@ exports.postPayment = async (req, res, next) => {
           status: 'Success',
           amount: totalToPay,
         });
+        order.orderUpdate.payment = new Date();
       } else {
-        //code for payment gateway...
-        console.log('Make payment gateway api call');
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: totalToPay * 100,
+          currency: 'lkr',
+          customer: req.user.stripeId,
+          confirm: true,
+          payment_method: payFrom,
+        });
+        order.payment.push({
+          type: 'Card',
+          status: 'Success',
+          amount: totalToPay,
+          payRef: paymentIntent.id,
+        });
+        order.orderUpdate.payment = new Date();
       }
-      order.orderUpdate.payment = new Date();
       await order.save({ session });
+    }
+    if (!saveCard) {
+      await stripe.paymentMethods.detach(payFrom);
     }
     session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
+exports.getPaymentIntent = async (req, res, next) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100000,
+      currency: 'lkr',
+    });
+    const clientSecret = paymentIntent.client_secret;
+    res.status(200).json({ message: 'Success', clientSecret: clientSecret });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+// exports.getPaymentIntent = async (req, res, next) => {
+//   try {
+//     const stripe = require('stripe')(process.env.STRIPE_SECRET);
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: 100000,
+//       currency: 'lkr',
+//     });
+//     const clientSecret = paymentIntent.client_secret;
+//     res.status(200).json({ message: 'Success', clientSecret: clientSecret });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Something went wrong' });
+//     logger(error);
+//     return;
+//   }
+// };
+
+exports.getCardSetupIntent = async (req, res, next) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const setupIntent = await stripe.setupIntents.create({
+      customer: req.user.stripeId,
+    });
+    res.json({
+      message: 'Success',
+      id: setupIntent.id,
+      clientSecret: setupIntent.client_secret,
+      customer: req.user.stripeId,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+exports.getCreateStripeCustomer = async (req, res, next) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const customer = await stripe.customers.create({ email: req.user.email });
+    req.user.stripeId = customer.id;
+    await req.user.save();
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -236,59 +321,31 @@ exports.getCart = async (req, res, next) => {
 };
 
 exports.getCards = async (req, res, next) => {
-  const cards = req.user.customer.paymentMethods.filter(
-    (item) => item.Status == 'Active'
-  );
-  if (!cards) {
-    res.status(200).json({ message: 'Success', cards: null });
-  }
-  const cardIds = [];
   try {
-    for (let card in cards) {
-      cardIds.push({
-        cardName: cards[card].CardName,
-        cardId: cards[card]._id,
-        cardNo: cards[card].CardNo.replace(
-          cards[card].CardNo.substring(4, 12),
-          '********'
-        )
-          .match(/.{1,4}/g)
-          .join(' '),
-        cardExp: cards[card].ExpiryDate,
-        cardType: cards[card].CardType,
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: req.user.stripeId,
+      type: 'card',
+    });
+    const cards = [];
+    paymentMethods.data.forEach((method) => {
+      const brand =
+        method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1);
+      let cardNo = '**** **** **** ' + method.card.last4;
+      if (brand == 'Amex') {
+        cardNo = '**** ****** *' + method.card.last4;
+      }
+      cards.push({
+        cardId: method.id,
+        cardName: brand + ' ' + method.card.last4,
+        cardNo: cardNo,
+        cardType: brand,
+        cardExp: method.card.exp_month + '/' + (method.card.exp_year % 2000),
       });
-    }
-    res.status(200).json({ message: 'Success', cards: cardIds });
+    });
+    res.status(200).json({ message: 'Success', cards: cards });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
-    logger(error);
-    return;
-  }
-};
-
-exports.postSaveCard = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: 'Vaildation Error' });
-  const { CardNumber, Nickname, CardHolderName, CVV, ExpiryDate } = req.body;
-  let cardType = 'Amex';
-  if (cardTypes.visa.test(CardNumber)) {
-    cardType = 'Visa';
-  } else if (cardTypes.master.test(CardNumber)) {
-    cardType = 'Master';
-  }
-  try {
-    req.user.customer.paymentMethods.push({
-      CardNo: CardNumber,
-      CardHolderName: CardHolderName,
-      ExpiryDate: ExpiryDate,
-      CardName: Nickname,
-      CardType: cardType,
-    });
-    await req.user.save();
-    res.status(200).json({ message: 'Success' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
     logger(error);
     return;
   }
@@ -297,12 +354,9 @@ exports.postSaveCard = async (req, res, next) => {
 exports.deleteRemoveCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   try {
-    req.user.customer.paymentMethods.forEach((card) => {
-      if (card._id == cardId) {
-        card.Status = 'Deleted';
-      }
-    });
-    await req.user.save();
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
+    const paymentMethod = await stripe.paymentMethods.detach(cardId);
     res.status(200).json({ message: 'Success' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -328,6 +382,188 @@ exports.postEditCard = async (req, res, next) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
     logger(error);
+    return;
+  }
+};
+
+exports.getOrderDetails = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      customer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
+
+    const orderData = order.toObject();
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+exports.getOrders = async (req, res, next) => {
+  const type = req.params.type;
+  if (!type) {
+    return res.status(422).json({ message: 'Vaildation Error' });
+  }
+  try {
+    let orders;
+
+    switch (type) {
+      case 'all':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        });
+        break;
+      case 'to-pay':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': null,
+          customer: req.user._id,
+        });
+        break;
+      case 'processing':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': null,
+          customer: req.user._id,
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            'orderUpdate.failed': { $eq: null },
+            'orderUpdate.payment': { $ne: null },
+            'orderUpdate.processed': { $ne: null },
+            'orderUpdate.shipped': null,
+            isDelivery: true,
+            customer: req.user._id,
+          })),
+        ];
+        break;
+      case 'to-pickup':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.pickedUp': null,
+          isDelivery: false,
+          customer: req.user._id,
+        });
+        break;
+      case 'shipped':
+        orders = await Order.find({
+          customer: req.user._id,
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.shipped': { $ne: null },
+          'orderUpdate.delivered': null,
+        });
+        break;
+      case 'to-review':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: -1,
+          deliveryRating: -1,
+          'orderUpdate.delivered': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            customer: req.user._id,
+            farmerRating: -1,
+            deliveryRating: -1,
+            'orderUpdate.pickedUp': { $ne: null },
+            'orderUpdate.failed': { $eq: null },
+          })),
+        ];
+        break;
+      case 'completed':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: { $ne: -1 },
+          deliveryRating: { $ne: -1 },
+          'orderUpdate.failed': { $eq: null },
+        });
+        break;
+      default:
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        });
+        break;
+    }
+
+    if (!this.getOrderDetails) {
+      throw new Error('No Orders');
+    }
+    let orderData = [];
+    orders.forEach((order) => {
+      let status = 'to-pay';
+      if (!order.orderUpdate.payment) {
+        status = 'to-pay';
+      } else if (
+        !order.orderUpdate.processed ||
+        (order.orderUpdate.processed &&
+          order.isDelivery &&
+          !order.orderUpdate.shipped)
+      ) {
+        status = 'processing';
+      } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
+        status = 'shipped';
+      } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
+        status = 'to-pickup';
+      } else if (
+        (order.orderUpdate.delivered || order.orderUpdate.pickedUp) &&
+        order.farmerRating == -1
+      ) {
+        status = 'to-review';
+      } else if (order.farmerRating != -1) {
+        status = 'completed';
+      }
+      orderData.push({
+        farmerName: order.farmerName,
+        orderId: order._id,
+        orderPlaced: order.orderUpdate.placed
+          ? moment(order.orderUpdate.placed).format('YYYY-MM-DD')
+          : null,
+        orderPaid: order.orderUpdate.payment
+          ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
+          : null,
+        orderTotal: order.totalPrice + order.totalDeliveryCharge,
+        status: status,
+      });
+    });
+    res.status(200).json({ message: 'Success', orders: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'No Orders') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
     return;
   }
 };

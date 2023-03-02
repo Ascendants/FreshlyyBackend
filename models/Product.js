@@ -50,7 +50,21 @@ const productSchema = new Schema({
     default: () => Date.now(),
   },
   imageUrls: {
-    type: [String],
+    type: [
+      new Schema(
+        {
+          imageUrl: {
+            type: String,
+            required: true,
+          },
+          placeholder: {
+            type: String,
+            required: true,
+          },
+        },
+        { _id: false }
+      ),
+    ],
     required: true,
   },
   qtyAvailable: {

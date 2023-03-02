@@ -10,6 +10,13 @@ router.post('/place-order/', customerController.postOrder);
 
 router.post('/payment/', customerController.postPayment);
 
+router.get('/get-payment-intent', customerController.getPaymentIntent);
+
+router.get('/get-card-setup-intent', customerController.getCardSetupIntent);
+
+//testing route
+router.get('/create-customer', customerController.getCreateStripeCustomer);
+
 router.get('/cart/', customerController.getCart);
 
 router.get('/cards/', customerController.getCards);
@@ -23,30 +30,6 @@ const cardTypes = {
   amex: /^3[47][0-9]{13}$/,
 };
 
-router.post(
-  '/save-card',
-  [
-    body('CardNumber')
-      .trim()
-      .matches(
-        cardTypes.amex.source +
-          '|' +
-          cardTypes.master.source +
-          '|' +
-          cardTypes.visa.source
-      ),
-    body('Nickname').trim().isLength({ min: 2, max: 15 }),
-    body('CardHolderName').trim().isLength({ min: 2, max: 22 }),
-    body('CVV')
-      .trim()
-      .matches(/^[0-9]{3,4}$/),
-    body('ExpiryDate')
-      .trim()
-      .matches(/((0[1-9])|(1[02]))\/\d{2}/),
-  ],
-  customerController.postSaveCard
-);
-
 router.delete('/delete-card/:cardId', customerController.deleteRemoveCard);
 
 router.post(
@@ -54,5 +37,8 @@ router.post(
   [body('Nickname').trim().isLength({ min: 2, max: 15 })],
   customerController.postEditCard
 );
+
+router.get('/get-order/:orderId', customerController.getOrderDetails);
+router.get('/get-orders/:type', customerController.getOrders);
 
 module.exports = router;
