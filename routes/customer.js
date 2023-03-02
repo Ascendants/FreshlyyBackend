@@ -19,6 +19,8 @@ router.get('/create-customer', customerController.getCreateStripeCustomer);
 
 router.get('/cart/', customerController.getCart);
 
+router.post('/cart/add', customerController.postCart);
+
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
