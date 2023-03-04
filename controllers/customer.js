@@ -58,7 +58,6 @@ exports.getDashboard = async (req, res, next) => {
     (await Order.countDocuments({
       customer: req.user._id,
       farmerRating: -1,
-      deliveryRating: -1,
       'orderUpdate.pickedUp': { $ne: null },
       'orderUpdate.failed': { $eq: null },
     })) +
@@ -169,6 +168,81 @@ exports.postOrder = async (req, res, next) => {
   }
 };
 
+exports.postPickupOrder = async (req, res, next) => {
+  const orderId = req.params?.orderId;
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    if (order.orderUpdate.processed == null) {
+      return res
+        .status(403)
+        .json({ message: 'Not possible pickup at this moment' });
+    }
+    if (order.isDelivery != false) {
+      return res.status(403).json({ message: 'This order will be delivered' });
+    }
+    order.orderUpdate.pickedUp = Date.now();
+    order.save();
+    return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+exports.postCancelOrder = async (req, res, next) => {
+  const orderId = req.params?.orderId;
+  const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    if (order.orderUpdate.processed != null) {
+      return res
+        .status(403)
+        .json({ message: 'Not possible to cancel at this moment' });
+    }
+    if (order.orderUpdate.cancelled == null) {
+      return res.status(403).json({ message: 'Already Cancelled' });
+    }
+    if (order.orderUpdate.failed != null) {
+      return res.status(403).json({ message: 'Already Cancelled' });
+    }
+    for (let i in order.payment) {
+      if (order.payment[i].status == 'Failed') {
+        continue;
+      }
+      if (order.payment[i].type == 'Coupon') {
+        //coupon management
+      } else if (order.payment[i].type == 'COD') {
+        order.payment[i].status = 'Refunded';
+      } else if (order.payment[i].type == 'Card') {
+        let refund;
+        try {
+          refund = await stripe.refunds.create({
+            payment_intent: order.payment[i].payRef,
+          });
+        } catch (error) {
+          logger(error);
+        }
+        if (refund?.status == 'succeeded') {
+          order.payment[i].status = 'Refunded';
+        } else {
+          //notify admin of the failed refund and ask to do manually
+        }
+      }
+    }
+    order.orderUpdate.cancelled = Date.now();
+    await order.save();
+    return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 exports.postPayment = async (req, res, next) => {
   const payFrom = req.body.payFrom;
   const orders = req.body.orders;
@@ -184,6 +258,12 @@ exports.postPayment = async (req, res, next) => {
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
     for (let orderId of orders) {
       const order = await Order.findById(orderId).session(session);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      if (order.orderUpdate.payment != null) {
+        return res.status(403).json({ message: 'Already Paid' });
+      }
       let total = order.totalPrice + order.totalDeliveryCharge;
       let totalPaid = 0;
       for (pay in order.payment) {
@@ -243,22 +323,6 @@ exports.getPaymentIntent = async (req, res, next) => {
     return;
   }
 };
-
-// exports.getPaymentIntent = async (req, res, next) => {
-//   try {
-//     const stripe = require('stripe')(process.env.STRIPE_SECRET);
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: 100000,
-//       currency: 'lkr',
-//     });
-//     const clientSecret = paymentIntent.client_secret;
-//     res.status(200).json({ message: 'Success', clientSecret: clientSecret });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Something went wrong' });
-//     logger(error);
-//     return;
-//   }
-// };
 
 exports.getCardSetupIntent = async (req, res, next) => {
   try {
@@ -432,6 +496,7 @@ exports.getOrders = async (req, res, next) => {
       case 'all':
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
         });
         break;
@@ -439,6 +504,7 @@ exports.getOrders = async (req, res, next) => {
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.payment': null,
+          'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
         });
         break;
@@ -447,6 +513,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.payment': { $ne: null },
           'orderUpdate.processed': null,
+          'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
         });
         orders = [
@@ -456,6 +523,7 @@ exports.getOrders = async (req, res, next) => {
             'orderUpdate.payment': { $ne: null },
             'orderUpdate.processed': { $ne: null },
             'orderUpdate.shipped': null,
+            'orderUpdate.cancelled': { $eq: null },
             isDelivery: true,
             customer: req.user._id,
           })),
@@ -467,6 +535,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.payment': { $ne: null },
           'orderUpdate.processed': { $ne: null },
           'orderUpdate.pickedUp': null,
+          'orderUpdate.cancelled': { $eq: null },
           isDelivery: false,
           customer: req.user._id,
         });
@@ -479,6 +548,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.processed': { $ne: null },
           'orderUpdate.shipped': { $ne: null },
           'orderUpdate.delivered': null,
+          'orderUpdate.cancelled': { $eq: null },
         });
         break;
       case 'to-review':
@@ -488,15 +558,16 @@ exports.getOrders = async (req, res, next) => {
           deliveryRating: -1,
           'orderUpdate.delivered': { $ne: null },
           'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
         });
         orders = [
           ...orders,
           ...(await Order.find({
             customer: req.user._id,
             farmerRating: -1,
-            deliveryRating: -1,
             'orderUpdate.pickedUp': { $ne: null },
             'orderUpdate.failed': { $eq: null },
+            'orderUpdate.cancelled': { $eq: null },
           })),
         ];
         break;
@@ -506,6 +577,14 @@ exports.getOrders = async (req, res, next) => {
           farmerRating: { $ne: -1 },
           deliveryRating: { $ne: -1 },
           'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
+        });
+        break;
+      case 'cancelled':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $ne: null },
+          customer: req.user._id,
         });
         break;
       default:
@@ -522,7 +601,9 @@ exports.getOrders = async (req, res, next) => {
     let orderData = [];
     orders.forEach((order) => {
       let status = 'to-pay';
-      if (!order.orderUpdate.payment) {
+      if (order.orderUpdate.cancelled) {
+        status = 'cancelled';
+      } else if (!order.orderUpdate.payment) {
         status = 'to-pay';
       } else if (
         !order.orderUpdate.processed ||
@@ -551,6 +632,9 @@ exports.getOrders = async (req, res, next) => {
           : null,
         orderPaid: order.orderUpdate.payment
           ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
+          : null,
+        orderCancelled: order.orderUpdate.cancelled
+          ? moment(order.orderUpdate.cancelled).format('YYYY-MM-DD')
           : null,
         orderTotal: order.totalPrice + order.totalDeliveryCharge,
         status: status,
