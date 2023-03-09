@@ -27,6 +27,8 @@ router.get('/dashboard', customerController.getDashboard);
 
 router.get('/main-page', customerController.getProducts);
 
+router.get('/social-corner', customerController.getSocialProducts);
+
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
   master:

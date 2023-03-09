@@ -889,10 +889,10 @@ exports.getProducts = async (req, res, next) => {
         let totalPrice = 0;
         let title = product.title;
         if (farmerSaleLocation && customerLocation) {
-          // console.log(farmerSaleLocation.longitude)
+          console.log(customerLocation.latitude)
           try {
             const distanceResponse = await fetch(
-              `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+              `https://maps.ion.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             const distanceData = await distanceResponse.json();
             // console.log(distanceData)
@@ -905,7 +905,7 @@ exports.getProducts = async (req, res, next) => {
               DEFAULT_QUANTITY
             );
           } catch (err) {
-            console.log(err);
+            console.log("");
           }
         }
 
@@ -913,7 +913,7 @@ exports.getProducts = async (req, res, next) => {
           _id: product._id,
           price: product.price,
           title: title,
-          farmerName:farmer.fname,
+          farmerName: farmer.fname,
           imageUrl: product.imageUrls[0],
           overallRating: product.overallRating,
           unit: product.unit,
@@ -921,6 +921,7 @@ exports.getProducts = async (req, res, next) => {
           deliveryCost: deliveryCost,
           distance: distanceNum,
           totalPrice: totalPrice,
+          publicUrl:product.publicUrl,
         };
       })
     );
@@ -936,16 +937,87 @@ exports.getProducts = async (req, res, next) => {
 
     const cheaperProductsUnsorted = productDetails.map((obj) => ({
       ...obj,
-      cheaper: obj.totalPrice === result.find((r) => r.title === obj.title).totalPrice,
+      cheaper:
+        obj.totalPrice === result.find((r) => r.title === obj.title).totalPrice,
     }));
-    const cheaperProducts = cheaperProductsUnsorted.filter((item) => item.cheaper === true);
-    const expensiveProducts = cheaperProductsUnsorted.filter((item) => item.cheaper === false);
+    const cheaperProducts = cheaperProductsUnsorted.filter(
+      (item) => item.cheaper === true
+    );
+    const expensiveProducts = cheaperProductsUnsorted.filter(
+      (item) => item.cheaper === false
+    );
     const sortedResult = cheaperProducts.concat(expensiveProducts);
-
 
     res.json(sortedResult);
   } catch (error) {
     console.error(error);
     res.status(500).send("Server Error! something is wrong");
   }
+};
+
+exports.getSocialProducts = async (req, res, next) => {
+  try{const todayDate = new Date();
+  const products = await Product.find({
+    status: "Live",
+    dateAdded: {
+      $gte: new Date((new Date().getTime() - (30 * 24 * 60 * 60 * 1000)))
+    },
+  }).sort({ dateAdded: -1 });
+ 
+  const productDetails = await Promise.all(
+  products.map(async (product)=>{
+    const farmer = await User.findById(product.farmer);
+    let title = product.title;
+    return {
+      _id: product._id,
+      price: product.price,
+      title: title,
+      farmerName: farmer.fname,
+      imageUrl: product.imageUrls[0],
+      overallRating: product.overallRating,
+      unit: product.unit,
+      likes: product.likes,
+      publicUrl:product.publicUrl,
+    };
+
+  })
+  );
+  const showSection=products.length>0?true:false;
+
+  const topselling=await Order.aggregate([
+    {
+      "$unwind": "$items"
+    },
+    {
+      "$group": {
+        "_id": "$items.itemId",
+        "sum": {
+          "$sum": "$items.qty"
+        }
+      }
+    },
+    {
+      "$sort": {
+        sum: -1
+      }
+    },
+    {
+      "$group": {
+        "_id": null,
+        "top_selling_products ": {
+          $push: "$_id"
+        }
+      }
+    }
+  ])
+  console.log(topselling)
+ 
+  res.status(200).json([{"message":"success","showSection":showSection,"title":"Recently Added","data":productDetails}])
+
+}catch(error){
+  console.log(error);
+}
+
+
+
 };
