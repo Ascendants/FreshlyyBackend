@@ -202,8 +202,9 @@ exports.postPickupOrder = async (req, res, next) => {
 exports.postCancelOrder = async (req, res, next) => {
   const orderId = req.params?.orderId;
   const stripe = require('stripe')(process.env.STRIPE_SECRET);
-
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -220,6 +221,20 @@ exports.postCancelOrder = async (req, res, next) => {
       return res
         .status(403)
         .json({ message: 'Failed Order. No need to cancel.' });
+    }
+    for (item of order.items) {
+      const result = await Product.findOneAndUpdate(
+        {
+          _id: item.itemId,
+        },
+        {
+          $inc: { qtyAvailable: item.qty },
+        },
+        { new: true, session: session }
+      );
+      if (!result) {
+        throw new Error('Failed to update product quantity');
+      }
     }
     for (let i in order.payment) {
       if (order.payment[i].status == 'Failed') {
@@ -247,8 +262,10 @@ exports.postCancelOrder = async (req, res, next) => {
     }
     order.orderUpdate.cancelled = Date.now();
     await order.save();
+    await session.commitTransaction();
     return res.status(200).json({ message: 'Success' });
   } catch (error) {
+    await session.abortTransaction();
     return res.status(500).json({ message: error.message });
   }
 };
@@ -584,7 +601,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.cancelled': { $ne: null },
           customer: req.user._id,
-        }).sort({ _id: -1 });
+        }).sort({ 'orderUpdate.cancelled': -1 });
         break;
       default:
         orders = await Order.find({
