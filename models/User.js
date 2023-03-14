@@ -94,6 +94,14 @@ const userSchema = new Schema({
       saleLocation: {
         type: [Location],
       },
+      bankAccount: new Schema(
+        {
+          Bank: { type: ObjectId, required: true },
+          AccountName: { type: String, required: true },
+          AccountNumber: { type: String, required: true },
+        },
+        { _id: false }
+      ),
     },
     { _id: false }
   ),

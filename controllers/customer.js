@@ -383,6 +383,24 @@ exports.getCreateStripeCustomer = async (req, res, next) => {
   }
 };
 
+exports.getCreateStripeAccount = async (req, res, next) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'LK',
+      email: 'haritha@hasathcharu.com',
+    });
+    req.user.stripeId = account.id;
+    await req.user.save();
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
   const cart = req.user.customer.cart.toObject();
