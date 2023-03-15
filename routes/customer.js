@@ -10,7 +10,7 @@ router.post('/place-order/', customerController.postOrder);
 
 router.post('/payment/', customerController.postPayment);
 
-router.post('/:productId/like', customerController.postLike);
+router.post('/like/:productId',customerController.postLike);
 
 router.get('/get-payment-intent', customerController.getPaymentIntent);
 
@@ -28,6 +28,8 @@ router.get('/dashboard', customerController.getDashboard);
 router.get('/main-page', customerController.getProducts);
 
 router.get('/social-corner', customerController.getSocialProducts);
+
+router.get('/following-products', customerController.getFollowingProducts);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,

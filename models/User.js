@@ -94,6 +94,10 @@ const userSchema = new Schema({
       saleLocation: {
         type:Location,
       },
+      followers:{
+        type:[ObjectId],
+        min:null
+      },
     },
     { _id: false }
   ),
@@ -104,6 +108,10 @@ const userSchema = new Schema({
       },
       locations: {
         type: [Location],
+      },
+      following:{
+        type:[ObjectId],
+        min:null
       },
       cart: [
         new Schema(
