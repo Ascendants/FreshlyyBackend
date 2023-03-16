@@ -1030,9 +1030,9 @@ exports.getSocialProducts = async (req, res, next) => {
     const likes = user.customer.following;
     const followingProducts = await Product.find({ farmer: { $in: likes } });
 
-    const productsWithImageUrl = followingProducts.map((product) => {
-      
-      const farmer =User.findById(product.farmer);
+    const productsWithImageUrl = await Promise.all(
+      followingProducts.map(async(product) => {
+      const farmer =await User.findById(product.farmer);
        return{
         _id: product._id,
         price: product.price,
@@ -1044,7 +1044,8 @@ exports.getSocialProducts = async (req, res, next) => {
         likes: product.likes,
         publicUrl: product.publicUrl,
        }
-    });
+    })
+    );
   
     // const threePartIndex = Math.ceil(productsWithImageUrl.length / 3);
     // const thirdPart = productsWithImageUrl.splice(-threePartIndex);
@@ -1075,7 +1076,7 @@ exports.getSocialProducts = async (req, res, next) => {
       })
     );
 
-    const section = ["Recently Added","Following","Top Selling Produts","Famous Products"];
+    const section = ["Recently Added","Following","Top Selling Products","Famous Products"];
     const data = [recentlyAdded,productsWithImageUrl,topSellingProducts,allFamousProducts];
     const dataOfProducts = [];
 
