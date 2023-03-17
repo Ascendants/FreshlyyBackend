@@ -130,22 +130,25 @@ exports.getDashboard = async (req, res, next) => {
     'orderUpdate.pickedUp': null,
     isDelivery: false,
   });
-  const toReview =
-    (await Order.countDocuments({
-      customer: req.user._id,
-      farmerRating: -1,
-      'orderUpdate.pickedUp': { $ne: null },
-      'orderUpdate.failed': { $eq: null },
-      'orderUpdate.cancelled': { $eq: null },
-    })) +
-    (await Order.countDocuments({
-      customer: req.user._id,
-      farmerRating: -1,
-      deliveryRating: -1,
-      'orderUpdate.delivered': { $ne: null },
-      'orderUpdate.failed': { $eq: null },
-      'orderUpdate.cancelled': { $eq: null },
-    }));
+  const toReview = await Order.countDocuments({
+    $or: [
+      {
+        customer: req.user._id,
+        farmerRating: -1,
+        deliveryRating: -1,
+        'orderUpdate.delivered': { $ne: null },
+        'orderUpdate.failed': { $eq: null },
+        'orderUpdate.cancelled': { $eq: null },
+      },
+      {
+        customer: req.user._id,
+        farmerRating: -1,
+        'orderUpdate.pickedUp': { $ne: null },
+        'orderUpdate.failed': { $eq: null },
+        'orderUpdate.cancelled': { $eq: null },
+      },
+    ],
+  });
   const all = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
