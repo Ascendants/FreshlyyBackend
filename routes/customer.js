@@ -45,8 +45,12 @@ router.post(
   [body('Nickname').trim().isLength({ min: 2, max: 15 })],
   customerController.postEditCard
 );
+router.post('/cancel-order/:orderId', customerController.postCancelOrder);
+router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
 
 router.get('/get-order/:orderId', customerController.getOrderDetails);
 router.get('/get-orders/:type', customerController.getOrders);
+
+router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
 
 module.exports = router;

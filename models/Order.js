@@ -114,7 +114,7 @@ const orderSchema = new Schema({
       status: {
         type: String,
         required: true,
-        enum: ['Success', 'Fail', 'Pending'],
+        enum: ['Success', 'Failed', 'Pending', 'Refunded'],
       },
     }),
   ],
