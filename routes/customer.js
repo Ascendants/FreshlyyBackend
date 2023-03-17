@@ -10,6 +10,8 @@ router.post('/place-order/', customerController.postOrder);
 
 router.post('/payment/', customerController.postPayment);
 
+router.post('/like/:productId',customerController.postLike);
+
 router.get('/get-payment-intent', customerController.getPaymentIntent);
 
 router.get('/get-card-setup-intent', customerController.getCardSetupIntent);
@@ -17,11 +19,18 @@ router.get('/get-card-setup-intent', customerController.getCardSetupIntent);
 //testing route
 router.get('/create-customer', customerController.getCreateStripeCustomer);
 
+
 router.get('/cart/', customerController.getCart);
 
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
+
+router.get('/mainpage',customerController.getProducts);
+
+router.get('/social-corner', customerController.getSocialProducts);
+
+
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
