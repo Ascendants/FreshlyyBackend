@@ -22,17 +22,20 @@ exports.getDashboard = async (req, res, next) => {
   const toPay = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.payment': null,
+    'orderUpdate.cancelled': { $eq: null },
     'orderUpdate.failed': { $eq: null },
   });
   const toProcess = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': null,
   });
   const toShip = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': null,
@@ -41,6 +44,7 @@ exports.getDashboard = async (req, res, next) => {
   const toReceive = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.shipped': { $ne: null },
@@ -49,6 +53,7 @@ exports.getDashboard = async (req, res, next) => {
   const toPickup = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
     'orderUpdate.payment': { $ne: null },
     'orderUpdate.processed': { $ne: null },
     'orderUpdate.pickedUp': null,
@@ -60,6 +65,7 @@ exports.getDashboard = async (req, res, next) => {
       farmerRating: -1,
       'orderUpdate.pickedUp': { $ne: null },
       'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
     })) +
     (await Order.countDocuments({
       customer: req.user._id,
@@ -67,10 +73,12 @@ exports.getDashboard = async (req, res, next) => {
       deliveryRating: -1,
       'orderUpdate.delivered': { $ne: null },
       'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
     }));
   const all = await Order.countDocuments({
     customer: req.user._id,
     'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
   });
   res.status(200).json({
     message: 'Success',
@@ -205,11 +213,13 @@ exports.postCancelOrder = async (req, res, next) => {
         .status(403)
         .json({ message: 'Not possible to cancel at this moment' });
     }
-    if (order.orderUpdate.cancelled == null) {
+    if (order.orderUpdate.cancelled != null) {
       return res.status(403).json({ message: 'Already Cancelled' });
     }
     if (order.orderUpdate.failed != null) {
-      return res.status(403).json({ message: 'Already Cancelled' });
+      return res
+        .status(403)
+        .json({ message: 'Failed Order. No need to cancel.' });
     }
     for (let i in order.payment) {
       if (order.payment[i].status == 'Failed') {
@@ -499,7 +509,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
-        });
+        }).sort({ _id: -1 });
         break;
       case 'to-pay':
         orders = await Order.find({
@@ -507,28 +517,16 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.payment': null,
           'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
-        });
+        }).sort({ _id: -1 });
         break;
       case 'processing':
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
           'orderUpdate.payment': { $ne: null },
           'orderUpdate.processed': null,
-          'orderUpdate.cancelled': { $eq: null },
+          'orderUpdate.cancelled': null,
+          'orderUpdate.failed': null,
           customer: req.user._id,
-        });
-        orders = [
-          ...orders,
-          ...(await Order.find({
-            'orderUpdate.failed': { $eq: null },
-            'orderUpdate.payment': { $ne: null },
-            'orderUpdate.processed': { $ne: null },
-            'orderUpdate.shipped': null,
-            'orderUpdate.cancelled': { $eq: null },
-            isDelivery: true,
-            customer: req.user._id,
-          })),
-        ];
+        }).sort({ _id: -1 });
         break;
       case 'to-pickup':
         orders = await Order.find({
@@ -539,7 +537,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.cancelled': { $eq: null },
           isDelivery: false,
           customer: req.user._id,
-        });
+        }).sort({ _id: -1 });
         break;
       case 'shipped':
         orders = await Order.find({
@@ -550,27 +548,28 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.shipped': { $ne: null },
           'orderUpdate.delivered': null,
           'orderUpdate.cancelled': { $eq: null },
-        });
+        }).sort({ _id: -1 });
         break;
       case 'to-review':
         orders = await Order.find({
-          customer: req.user._id,
-          farmerRating: -1,
-          deliveryRating: -1,
-          'orderUpdate.delivered': { $ne: null },
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.cancelled': { $eq: null },
-        });
-        orders = [
-          ...orders,
-          ...(await Order.find({
-            customer: req.user._id,
-            farmerRating: -1,
-            'orderUpdate.pickedUp': { $ne: null },
-            'orderUpdate.failed': { $eq: null },
-            'orderUpdate.cancelled': { $eq: null },
-          })),
-        ];
+          $or: [
+            {
+              customer: req.user._id,
+              farmerRating: -1,
+              deliveryRating: -1,
+              'orderUpdate.delivered': { $ne: null },
+              'orderUpdate.failed': { $eq: null },
+              'orderUpdate.cancelled': { $eq: null },
+            },
+            {
+              customer: req.user._id,
+              farmerRating: -1,
+              'orderUpdate.pickedUp': { $ne: null },
+              'orderUpdate.failed': { $eq: null },
+              'orderUpdate.cancelled': { $eq: null },
+            },
+          ],
+        }).sort({ _id: -1 });
         break;
       case 'completed':
         orders = await Order.find({
@@ -579,24 +578,24 @@ exports.getOrders = async (req, res, next) => {
           deliveryRating: { $ne: -1 },
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.cancelled': { $eq: null },
-        });
+        }).sort({ _id: -1 });
         break;
       case 'cancelled':
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.cancelled': { $ne: null },
           customer: req.user._id,
-        });
+        }).sort({ _id: -1 });
         break;
       default:
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
           customer: req.user._id,
-        });
+        }).sort({ _id: -1 });
         break;
     }
 
-    if (!this.getOrderDetails) {
+    if (!orders) {
       throw new Error('No Orders');
     }
     let orderData = [];
