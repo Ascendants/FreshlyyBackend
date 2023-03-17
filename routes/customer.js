@@ -43,4 +43,6 @@ router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
 router.get('/get-order/:orderId', customerController.getOrderDetails);
 router.get('/get-orders/:type', customerController.getOrders);
 
+router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
+
 module.exports = router;
