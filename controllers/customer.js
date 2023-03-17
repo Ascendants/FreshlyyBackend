@@ -541,6 +541,7 @@ exports.getOrderDetails = async (req, res, next) => {
 
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
+  // console.log(type);
   if (!type) {
     return res.status(422).json({ message: 'Vaildation Error' });
   }
@@ -693,5 +694,277 @@ exports.getOrders = async (req, res, next) => {
     }
     res.status(500).json({ message: error.message });
     return;
+  }
+};
+
+exports.getSpecificOrder = async (req, res) => {
+  try{
+  const order = await Order.findById(req.params.orderId);
+  // console.log(order);
+  res.status(200).json({"message": "Success", "order": order});
+  } catch (error){
+    console.log(error);
+  }
+}
+exports.postLike = async (req, res, next) => {
+  const id=req.params.productId;
+  console.log(req.body.newLike)
+  const {method}=req.body;
+  const userEmail = req.user.email;
+  const product=await Product.findById(id);
+  if (!product) {
+   return res.status(404).json({ message: 'Product not found' });
+ }
+ const likes = new Set(product.likes);
+ if (method === 'add') {
+   likes.add(userEmail);
+ } else if (method === 'remove') {
+   likes.delete(userEmail);
+ } else {
+   return res.status(400).json({ message: 'Invalid method' });
+ }
+ product.likes = Array.from(likes);
+ await product.save();
+ res.json({message:'Success saved the Like'})
+};
+
+
+
+exports.getProducts = async (req, res, next) => {
+  const DEFAULT_QUANTITY = 1;
+
+  function calculateTotalPrice(productPrice, deliveryCost, quantity) {
+    return productPrice * quantity + deliveryCost;
+  }
+  try {
+    const userEmail = req.user.email;
+    const user = await User.findOne({ email: userEmail });
+    const isFarmer = user.accessLevel === "farmer";
+    const products = await Product.find({ status: "Live" });
+
+    const productDetails = await Promise.all(
+      products.map(async (product) => {
+        const farmer = await User.findById(product.farmer);
+        const farmerSaleLocation = farmer.farmer.saleLocation;
+        const customerLocation = isFarmer ? null : user.customer.slctdLocation;
+
+        let deliveryCost = 0;
+        let distanceValue = 0;
+        let distanceNum = 0;
+        let totalPrice = 0;
+        let title = product.title;
+        if (farmerSaleLocation && customerLocation) {
+          // console.log(farmerSaleLocation.longitude)
+
+          try {
+            const distanceResponse = await fetch(
+              `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+            );
+            const distanceData = await distanceResponse.json();
+            // console.log(distanceData)
+            distanceValue = distanceData.rows[0].elements[0].distance.text;
+            distanceNum = parseFloat(distanceValue.replace("Km", "").trim());
+            deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
+            totalPrice = calculateTotalPrice(
+              product.price,
+              deliveryCost,
+              DEFAULT_QUANTITY
+            );
+          } catch (err) {
+            console.log(err);
+          }
+        }
+
+        return {
+          _id: product._id,
+          price: product.price,
+          title: title,
+          farmerName: farmer.fname,
+          imageUrl: product.imageUrls[0],
+          overallRating: product.overallRating,
+          unit: product.unit,
+          likes: product.likes,
+          deliveryCost: deliveryCost,
+          distance: distanceNum,
+          distanceAway: distanceValue,
+          totalPrice: totalPrice,
+          publicUrl: product.publicUrl,
+        };
+      })
+    );
+    // console.log(Product.aggregate([{$group:{_id:"$title",minTotPrice:{$min:"$price"}}}]))
+    const result = Object.values(
+      productDetails.reduce((acc, cur) => {
+        if (!(cur.title in acc) || acc[cur.title].totalPrice > cur.totalPrice) {
+          acc[cur.title] = cur;
+        }
+        return acc;
+      }, {})
+    ).map((obj) => ({ ...obj, cheaper: true }));
+
+    const cheaperProductsUnsorted = productDetails.map((obj) => ({
+      ...obj,
+      cheaper:
+        obj.totalPrice === result.find((r) => r.title === obj.title).totalPrice,
+    }));
+    const cheaperProducts = cheaperProductsUnsorted.filter(
+      (item) => item.cheaper === true
+    );
+    const expensiveProducts = cheaperProductsUnsorted.filter(
+      (item) => item.cheaper === false
+    );
+    const sortedResult = cheaperProducts.concat(expensiveProducts);
+
+    res.json(sortedResult);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error! something is wrong");
+  }
+};
+
+exports.getSocialProducts = async (req, res, next) => {
+  try {
+    const userEmail = req.user.email;
+    const user = await User.findOne({ email: userEmail });
+    const todayDate = new Date();
+    const products = await Product.find({
+      status: "Live",
+      dateAdded: {
+        $gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+      },
+    }).sort({ dateAdded: -1 });
+
+    const recentlyAdded = await Promise.all(
+      products.map(async (product) => {
+        const farmer = await User.findById(product.farmer);
+        let title = product.title;
+        return {
+          _id: product._id,
+          price: product.price,
+          title: title,
+          farmerName: farmer.fname,
+          imageUrl: product.imageUrls[0],
+          overallRating: product.overallRating,
+          unit: product.unit,
+          likes: product.likes,
+          publicUrl: product.publicUrl,
+        };
+      })
+    );
+
+    const topselling = await Order.aggregate([
+      {
+        $unwind: "$items",
+      },
+      {
+        $group: {
+          _id: "$items.itemId",
+          sum: {
+            $sum: "$items.qty",
+          },
+        },
+      },
+      {
+        $sort: {
+          sum: -1,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          top_selling_products: {
+            $push: "$_id",
+          },
+        },
+      },
+    ]);
+
+    const topSellingProducts = await Promise.all(
+      topselling[0].top_selling_products.map(async (item) => {
+        const product = await Product.findById(item);
+        const farmer = await User.findById(product.farmer);
+        return {
+          _id: product._id,
+          price: product.price,
+          title: product.title,
+          farmerName: farmer.fname,
+          imageUrl: product.imageUrls[0],
+          overallRating: product.overallRating,
+          unit: product.unit,
+          likes: product.likes,
+          publicUrl: product.publicUrl,
+        };
+      })
+    );
+
+    const likes = user.customer.following;
+    const followingProducts = await Product.find({ farmer: { $in: likes } });
+
+    const productsWithImageUrl = await Promise.all(
+      followingProducts.map(async(product) => {
+      const farmer =await User.findById(product.farmer);
+       return{
+        _id: product._id,
+        price: product.price,
+        title: product.title,
+        farmerName:farmer.fname,
+        imageUrl: product.imageUrls[0],
+        overallRating: product.overallRating,
+        unit: product.unit,
+        likes: product.likes,
+        publicUrl: product.publicUrl,
+       }
+    })
+    );
+  
+    // const threePartIndex = Math.ceil(productsWithImageUrl.length / 3);
+    // const thirdPart = productsWithImageUrl.splice(-threePartIndex);
+    // const secondPart = productsWithImageUrl.splice(-threePartIndex);
+    // const firstPart = productsWithImageUrl;
+   
+   const famousProducts=await Product.aggregate([
+      { $match: { status: 'Live', likes: { $exists: true } } },
+      { $project: { _id: 1, price: 1, farmer: 1, imageUrls: 1, overallRating: 1, title: 1, unit: 1, publicUrl: 1,likes:1, likesCount: { $size: '$likes' } } },
+      { $sort: { likesCount: -1 } }
+    ]);
+
+    const allFamousProducts = await Promise.all(
+       famousProducts.map(async (product) => {
+        const farmer = await User.findById(product.farmer);
+        return {
+          _id: product._id,
+          price: product.price,
+          title: product.title,
+          farmerName: farmer.fname,
+          imageUrl: product.imageUrls[0],
+          overallRating: product.overallRating,
+          unit:product.unit,
+          likes:product.likes,
+          likeCount:product.likesCount,
+          publicUrl:product.publicUrl,
+        };
+      })
+    );
+
+    const section = ["Recently Added","Following","Top Selling Products","Famous Products"];
+    const data = [recentlyAdded,productsWithImageUrl,topSellingProducts,allFamousProducts];
+    const dataOfProducts = [];
+
+    for (const index in section) {
+      const dataP = {};
+      const showSection = data[index].length > 0 ? true : false;
+      dataP["title"] = section[index]==null?null:section[index];
+      dataP["data"] = data[index];
+      dataP["showSection"] = showSection;
+      // dataP["horizontalScroll"]=section[index]==null?false:true;
+      // console.log(dataP);
+      dataOfProducts.push(dataP);
+    }
+ 
+    res
+      .status(200)
+      .json({ message: "Success", socialProducts: dataOfProducts });
+  } catch (error) {
+    console.log(error);
   }
 };
