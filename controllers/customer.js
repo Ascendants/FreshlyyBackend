@@ -486,6 +486,7 @@ exports.getOrderDetails = async (req, res, next) => {
 
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
+  // console.log(type);
   if (!type) {
     return res.status(422).json({ message: 'Vaildation Error' });
   }
@@ -651,3 +652,13 @@ exports.getOrders = async (req, res, next) => {
     return;
   }
 };
+
+exports.getSpecificOrder = async (req, res) => {
+  try{
+  const order = await Order.findById(req.params.orderId);
+  // console.log(order);
+  res.status(200).json({"message": "Success", "order": order});
+  } catch (error){
+    console.log(error);
+  }
+}
