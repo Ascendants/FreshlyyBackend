@@ -72,6 +72,31 @@ const userSchema = new Schema({
         type: String,
         required: true,
       },
+      accCashEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accTotalEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCommissionCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCouponCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      withdrawable: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
       hasVehicle: {
         type: Boolean,
         required: true,

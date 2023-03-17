@@ -6,12 +6,83 @@ const Order = require('../models/Order');
 const mongoose = require('mongoose');
 const moment = require('moment');
 const { ObjectId } = require('mongodb');
+const cron = require('node-cron');
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
   master:
     /^(5[1-5][0-9]{14}|2(22[1-9][0-9]{12}|2[3-9][0-9]{13}|[3-6][0-9]{14}|7[0-1][0-9]{13}|720[0-9]{12}))$/,
   amex: /^3[47][0-9]{13}$/,
 };
+
+const cancelOrder = async (orderId) => {
+  if (!orderId) {
+    return { status: 422, message: 'Validation Error' };
+  }
+  const stripe = require('stripe')(process.env.STRIPE_SECRET);
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return { status: 404, message: 'Order not found' };
+    }
+    if (order.orderUpdate.processed != null) {
+      return { status: 403, message: 'Not possible to cancel at this moment' };
+    }
+    if (order.orderUpdate.cancelled != null) {
+      return { status: 403, message: 'Already Cancelled' };
+    }
+    if (order.orderUpdate.failed != null) {
+      return { status: 403, message: 'Failed Order. No need to cancel.' };
+    }
+    for (item of order.items) {
+      const result = await Product.findOneAndUpdate(
+        {
+          _id: item.itemId,
+        },
+        {
+          $inc: { qtyAvailable: item.qty },
+        },
+        { new: true, session: session }
+      );
+      if (!result) {
+        throw new Error('Failed to update product quantity');
+      }
+    }
+    for (let i in order.payment) {
+      if (order.payment[i].status == 'Failed') {
+        continue;
+      }
+      if (order.payment[i].type == 'Coupon') {
+        //coupon management
+      } else if (order.payment[i].type == 'COD') {
+        order.payment[i].status = 'Refunded';
+      } else if (order.payment[i].type == 'Card') {
+        let refund;
+        try {
+          refund = await stripe.refunds.create({
+            payment_intent: order.payment[i].payRef,
+          });
+        } catch (error) {
+          logger(error);
+        }
+        if (refund?.status == 'succeeded') {
+          order.payment[i].status = 'Refunded';
+        } else {
+          //notify admin of the failed refund and ask to do manually
+        }
+      }
+    }
+    order.orderUpdate.cancelled = Date.now();
+    await order.save({ session: session });
+    await session.commitTransaction();
+    return { status: 200, message: 'Success' };
+  } catch (error) {
+    await session.abortTransaction();
+    return { status: 500, message: error.message };
+  }
+};
+exports.cancelOrder = cancelOrder;
 exports.getDashboard = async (req, res, next) => {
   const user = {
     fname: req.user.fname,
@@ -157,15 +228,16 @@ exports.postOrder = async (req, res, next) => {
           itemId: ObjectId(result),
           qty: cartItem.qty,
           uPrice: result.price,
-          commission: result.price * req.config.siteCommission,
         });
         total += cartItem.qty * result.price;
       }
       order.totalPrice = total;
+      order.commission = total * req.config.siteCommission;
       order.farmerName = (await User.findById(farmerItem.farmer)).fname;
       await order.save({ session });
       orders.push(order);
     }
+    //remember to clear the cart in production
     session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
@@ -201,73 +273,8 @@ exports.postPickupOrder = async (req, res, next) => {
 
 exports.postCancelOrder = async (req, res, next) => {
   const orderId = req.params?.orderId;
-  const stripe = require('stripe')(process.env.STRIPE_SECRET);
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-    if (order.orderUpdate.processed != null) {
-      return res
-        .status(403)
-        .json({ message: 'Not possible to cancel at this moment' });
-    }
-    if (order.orderUpdate.cancelled != null) {
-      return res.status(403).json({ message: 'Already Cancelled' });
-    }
-    if (order.orderUpdate.failed != null) {
-      return res
-        .status(403)
-        .json({ message: 'Failed Order. No need to cancel.' });
-    }
-    for (item of order.items) {
-      const result = await Product.findOneAndUpdate(
-        {
-          _id: item.itemId,
-        },
-        {
-          $inc: { qtyAvailable: item.qty },
-        },
-        { new: true, session: session }
-      );
-      if (!result) {
-        throw new Error('Failed to update product quantity');
-      }
-    }
-    for (let i in order.payment) {
-      if (order.payment[i].status == 'Failed') {
-        continue;
-      }
-      if (order.payment[i].type == 'Coupon') {
-        //coupon management
-      } else if (order.payment[i].type == 'COD') {
-        order.payment[i].status = 'Refunded';
-      } else if (order.payment[i].type == 'Card') {
-        let refund;
-        try {
-          refund = await stripe.refunds.create({
-            payment_intent: order.payment[i].payRef,
-          });
-        } catch (error) {
-          logger(error);
-        }
-        if (refund?.status == 'succeeded') {
-          order.payment[i].status = 'Refunded';
-        } else {
-          //notify admin of the failed refund and ask to do manually
-        }
-      }
-    }
-    order.orderUpdate.cancelled = Date.now();
-    await order.save();
-    await session.commitTransaction();
-    return res.status(200).json({ message: 'Success' });
-  } catch (error) {
-    await session.abortTransaction();
-    return res.status(500).json({ message: error.message });
-  }
+  const { status, message } = await cancelOrder(orderId);
+  return res.status(status).json({ message: message });
 };
 
 exports.postPayment = async (req, res, next) => {
