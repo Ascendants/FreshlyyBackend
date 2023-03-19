@@ -82,10 +82,12 @@ async function clearFundsForOrder(session, date) {
 
     let balanceToUpdate = 0;
     let cashOnDelivery = 0;
+
     for (payment of order.payment) {
       if (payment.status != 'Success') {
         continue;
       }
+
       if (payment.type == 'COD') {
         balanceToUpdate += order.commission * -1;
         cashOnDelivery = payment.amount;
@@ -142,6 +144,7 @@ async function clearFundsForOrder(session, date) {
           },
           'farmer.lastBalanceUpdate': date,
         };
+
         if (farmerInvoice == null) {
           //if a new invoice was created, then its a new month, therefore,
           //reset accumulated balances to 0 and close the last month invoice
@@ -156,12 +159,14 @@ async function clearFundsForOrder(session, date) {
             'farmer.accCashEarnings': cashOnDelivery,
           };
         }
+
         if (
           !farmerUser.farmer.negativeBalanceSince &&
           farmerUser.farmer.withdrawable + balanceToUpdate < 0
         ) {
           farmerUpdates['farmer.negativeBalanceSince'] = date;
         }
+
         if (farmerUser.farmer.withdrawable + balanceToUpdate >= 0) {
           farmerUpdates['farmer.negativeBalanceSince'] = null;
           farmerUpdates['farmer.finStatus'] = 'Active';
