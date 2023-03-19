@@ -6,6 +6,18 @@ const farmerMonthInvoiceSchema = new Schema({
     type: ObjectId,
     required: true,
   },
+  farmerName: {
+    type: String,
+    required: true,
+  },
+  farmerEmail: {
+    type: String,
+    required: true,
+  },
+  farmerAddress: {
+    type: String,
+    required: true,
+  },
   invoiceId: {
     type: String,
     required: true,

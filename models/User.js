@@ -97,6 +97,10 @@ const userSchema = new Schema({
         required: true,
         default: 0,
       },
+      lastBalanceUpdate: {
+        type: Date,
+        default: null,
+      },
       hasVehicle: {
         type: Boolean,
         required: true,

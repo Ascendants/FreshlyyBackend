@@ -1,10 +1,12 @@
 const Product = require('../models/Product');
 const User = require('../models/User');
+const moment = require('moment');
 const Order = require('../models/Order');
 const { ObjectId } = require('mongodb');
 const Bank = require('../models/Bank');
 const SupportTicket = require('../models/SupportTicket');
 const Coupon = require('../models/Coupon');
+const { logger } = require('../util/logger');
 
 const { validationResult } = require('express-validator');
 
@@ -248,8 +250,13 @@ exports.createCoupon = (req, res, next) => {
   });
 };
 exports.getBanks = async (req, res, next) => {
-  const banks = await Bank.find();
-  res.status(200).json({ message: 'Success', banks: banks });
+  try {
+    const banks = await Bank.find();
+    res.status(200).json({ message: 'Success', banks: banks });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
 };
 
 exports.postCreateBank = async (req, res, next) => {
@@ -290,25 +297,38 @@ exports.postSaveAccount = async (req, res, next) => {
   }
 };
 
-//   // usage
-//   const productId = "63f4d385b1a06dad48ec25ba";
-//   const updatedFields = {
-//     title: title,
-//     status: "Paused",
-//     description: description,
-//     price: price,
-//     overallRating: 3,
-//     minQtyIncrement: minQtyIncrement,
-//     unit: "KG",
-//     farmer: user,
-//     qtyAvailable: qtyAvailable,
-//     imageUrls: [
-//       {
-//         imageUrl:
-//           "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa",
-//         placeholder: "#9c7954",
-//       },
-//     ],
-//   };
-//   updateProduct(productId, updatedFields);
-// };
+exports.getEarnings = async (req, res, next) => {
+  const updatedDate = new Date(req.user.farmer.lastBalanceUpdate);
+  try {
+    let bank = null;
+    let accountNumber = null;
+    if (req.user.farmer.bankAccount) {
+      bank = (await Bank.findById(req.user.farmer.bankAccount.Bank)).BankName;
+      accountNumber =
+        req.user.farmer.bankAccount.AccountNumber.slice(0, -4).replace(
+          /./g,
+          '*'
+        ) + req.user.farmer.bankAccount.AccountNumber.slice(-4);
+    }
+    data = {
+      totalEarnings: req.user.farmer.accTotalEarnings,
+      commissionCharged: req.user.farmer.accCommissionCharges,
+      cashInHand: req.user.farmer.accCashEarnings,
+      withdrawable: req.user.farmer.withdrawable,
+      couponCharges: req.user.farmer.accCouponCharges,
+      lastUpdate:
+        moment(updatedDate).format('DD-MM-YYYY') +
+        ' at ' +
+        moment(updatedDate).format('HH:mm'),
+      couponCharges: req.user.farmer.accCouponCharges,
+      isWithdrawable: req.user.farmer.withdrawable > 2000,
+      hasBankAccount: req.user.farmer.bankAccount != null,
+      bank: bank,
+      bankAccountNum: accountNumber,
+    };
+    res.status(200).json({ message: 'Success', earnings: data });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
