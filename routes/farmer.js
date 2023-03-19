@@ -15,6 +15,8 @@ router.get('/get-banks', farmerController.getBanks);
 
 router.get('/earnings', farmerController.getEarnings);
 
+router.post('/payout-request', farmerController.postPayoutRequest);
+
 router.post(
   '/save-account',
   [

@@ -7,6 +7,7 @@ const Bank = require('../models/Bank');
 const SupportTicket = require('../models/SupportTicket');
 const Coupon = require('../models/Coupon');
 const { logger } = require('../util/logger');
+const PayoutRequest = require('../models/PayoutRequest');
 
 const { validationResult } = require('express-validator');
 
@@ -325,10 +326,42 @@ exports.getEarnings = async (req, res, next) => {
       hasBankAccount: req.user.farmer.bankAccount != null,
       bank: bank,
       bankAccountNum: accountNumber,
+      negativeSince: req.user.farmer.negativeBalanceSince
+        ? moment(new Date(req.user.farmer.negativeBalanceSince)).format(
+            'DD-MM-YYYY'
+          )
+        : null,
     };
     res.status(200).json({ message: 'Success', earnings: data });
   } catch (err) {
     logger(err);
     res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.postPayoutRequest = async (req, res, next) => {
+  if (req.user.farmer.withdrawable < 2000) {
+    return res.status(403).json({ message: 'Insufficient Balance' });
+  }
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const payoutRequest = new PayoutRequest({
+        farmerId: req.user._id,
+        amount: req.user.farmer.withdrawable,
+        farmerName: req.user.fname + ' ' + req.user.lname,
+        farmerEmail: req.user.email,
+        farmerAddress: req.user.bAddress,
+      });
+      req.user.farmer.withdrawable = 0;
+      payoutRequest.save();
+      req.user.save();
+    });
+    res
+      .status(200)
+      .json({ message: 'Success', payoutRequestId: payoutRequest._id });
+  } catch (err) {
+    logger(err);
+    return res.status(500).json({ message: 'Something went wrong' });
   }
 };

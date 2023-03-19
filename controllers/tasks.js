@@ -30,12 +30,19 @@ function getPreviousMonth(date) {
   return `${month}-${year}`;
 }
 
-exports.clearFundsForOrder = async () => {
+exports.runDailyTasks = async () => {
   const session = await mongoose.startSession();
   const date = new Date();
+  await clearFundsForOrder(session, date);
+  await suspendFarmersWhoHaventPaid(session, date);
+  await closeInvoicesAtMonthEnd(session, date);
+};
+
+async function clearFundsForOrder(session, date) {
+  let orders;
   try {
     //fetch orders that has been completed
-    const orders = await Order.find({
+    orders = await Order.find({
       $or: [
         {
           'orderUpdate.delivered': { $ne: null },
@@ -51,137 +58,183 @@ exports.clearFundsForOrder = async () => {
         },
       ],
     });
-    for (let order of orders) {
-      const orderDate = new Date(order.orderUpdate.placed);
-      const completionTime =
-        order.orderUpdate.delivered || order.orderUpdate.pickedUp;
-      const hoursAfterComplete = (Date.now() - completionTime) / 36e5 + 72;
-      if (hoursAfterComplete < 72) {
+  } catch (err) {
+    logger(err);
+    return;
+  }
+
+  if (!orders) {
+    return;
+  }
+
+  for (let order of orders) {
+    const orderDate = new Date(order.orderUpdate.placed);
+
+    const completionTime =
+      order.orderUpdate.delivered || order.orderUpdate.pickedUp;
+
+    const hoursAfterComplete = (Date.now() - completionTime) / 36e5 + 72;
+    //remove the + 72. added for testing
+
+    if (hoursAfterComplete < 72) {
+      continue;
+    }
+
+    let balanceToUpdate = 0;
+    let cashOnDelivery = 0;
+    for (payment of order.payment) {
+      if (payment.status != 'Success') {
         continue;
       }
-
-      let balanceToUpdate = 0;
-      let cashOnDelivery = 0;
-      for (payment of order.payment) {
-        if (payment.status != 'Success') {
-          continue;
-        }
-        if (payment.type == 'COD') {
-          balanceToUpdate += order.commission * -1;
-          cashOnDelivery = payment.amount;
-          break;
-        } else if (payment.type == 'Card') {
-          balanceToUpdate +=
-            order.totalPrice + order.totalDeliveryCharge - order.commission;
-          break;
-        }
-        // else if(payment.type=='Coupon') // coupon management
+      if (payment.type == 'COD') {
+        balanceToUpdate += order.commission * -1;
+        cashOnDelivery = payment.amount;
+        break;
+      } else if (payment.type == 'Card') {
+        balanceToUpdate +=
+          order.totalPrice + order.totalDeliveryCharge - order.commission;
+        break;
       }
+      // else if(payment.type=='Coupon') // coupon management
+    }
+    try {
+      await session.withTransaction(async () => {
+        //closing the order as completed
+        await Order.findByIdAndUpdate(order._id, {
+          'orderUpdate.closed': date,
+        }).session(session);
+        const farmerInvoiceId = `${order.farmer}-${orderDate
+          .getMonth()
+          .toString()
+          .padStart(2, 0)}-${orderDate.getFullYear()}`;
+        const farmerUser = await User.findById(order.farmer).session(session);
+
+        //updating the monthly invoice of farmer
+        const farmerInvoice = await FarmerMonthInvoice.findOneAndUpdate(
+          { invoiceId: farmerInvoiceId },
+          {
+            farmerId: order.farmer,
+            $inc: {
+              totalEarnings: order.totalPrice + order.totalDeliveryCharge,
+              commissionAmount: order.commission,
+              cashInHand: cashOnDelivery,
+            },
+            $push: { orders: order._id },
+            date: {
+              year: orderDate.getFullYear(),
+              month: orderDate.getMonth(),
+            },
+            farmerName: farmerUser.fname + ' ' + farmerUser.lname,
+            farmerEmail: farmerUser.email,
+            farmerAddress: farmerUser.bAddress,
+          },
+          { upsert: true, session: session }
+        );
+
+        let farmerUpdates = {
+          $inc: {
+            'farmer.withdrawable': balanceToUpdate,
+            'farmer.accCommissionCharges': order.commission,
+            'farmer.accTotalEarnings':
+              order.totalPrice + order.totalDeliveryCharge,
+            'farmer.accCashEarnings': cashOnDelivery,
+            //'farmer.accCouponCharges': someamount, coupon management
+          },
+          'farmer.lastBalanceUpdate': date,
+        };
+        if (farmerInvoice == null) {
+          //if a new invoice was created, then its a new month, therefore,
+          //reset accumulated balances to 0 and close the last month invoice
+          farmerUpdates = {
+            $inc: {
+              'farmer.withdrawable': balanceToUpdate,
+            },
+            'farmer.lastBalanceUpdate': date,
+            'farmer.accCommissionCharges': order.commission,
+            'farmer.accTotalEarnings':
+              order.totalPrice + order.totalDeliveryCharge,
+            'farmer.accCashEarnings': cashOnDelivery,
+          };
+        }
+        if (
+          !farmerUser.farmer.negativeBalanceSince &&
+          farmerUser.farmer.withdrawable + balanceToUpdate < 0
+        ) {
+          farmerUpdates['farmer.negativeBalanceSince'] = date;
+        }
+        if (farmerUser.farmer.withdrawable + balanceToUpdate >= 0) {
+          farmerUpdates['farmer.negativeBalanceSince'] = null;
+          farmerUpdates['farmer.finStatus'] = 'Active';
+        }
+
+        await User.findByIdAndUpdate(order.farmer, farmerUpdates, {
+          session: session,
+        });
+
+        //updating company invoice for the current month
+
+        const companyInvoiceId = `${orderDate
+          .getMonth()
+          .toString()
+          .padStart(2, 0)}-${orderDate.getFullYear()}`;
+
+        await CompanyMonthInvoice.findOneAndUpdate(
+          { invoiceId: companyInvoiceId },
+          {
+            $inc: {
+              totalEarnings: order.totalPrice + order.totalDeliveryCharge,
+              commissionAmount: order.commission,
+            },
+            $push: { orders: order._id },
+            date: {
+              year: orderDate.getFullYear(),
+              month: orderDate.getMonth(),
+            },
+          },
+          { upsert: true, session: session }
+        );
+      });
+    } catch (err) {
+      console.log('Error: ', err);
+    }
+  }
+}
+
+async function suspendFarmersWhoHaventPaid(session, date) {
+  const farmers = await User.find({
+    accessLevel: 'Farmer',
+    'farmer.finStatus': 'Active',
+    'farmer.status': 'Active',
+    status: 'Active',
+  });
+  for (let farmerUser of farmers) {
+    if (!farmerUser.farmer.negativeBalanceSince) {
+      continue;
+    }
+    const timeSinceNegativeBalance =
+      (Date.now() - new Date(farmerUser.farmer.negativeBalanceSince)) /
+      36e5 /
+      24;
+    if (timeSinceNegativeBalance > 30) {
       try {
         await session.withTransaction(async () => {
-          //closing the order as completed
-          await Order.findByIdAndUpdate(
-            order._id,
+          await User.findByIdAndUpdate(
+            farmerUser._id,
             {
-              'orderUpdate.closed': date,
+              'farmer.finStatus': 'Suspended',
             },
             { session: session }
           );
-          const farmerInvoiceId = `${order.farmer}-${orderDate
-            .getMonth()
-            .toString()
-            .padStart(2, 0)}-${orderDate.getFullYear()}`;
-          const farmer = await User.findById(order.farmer);
-
-          //updating the monthly invoice of farmer
-          const farmerInvoice = await FarmerMonthInvoice.findOneAndUpdate(
-            { invoiceId: farmerInvoiceId },
-            {
-              farmerId: order.farmer,
-              $inc: {
-                totalEarnings: order.totalPrice + order.totalDeliveryCharge,
-                commissionAmount: order.commission,
-                cashInHand: cashOnDelivery,
-              },
-              $push: { orders: order._id },
-              date: {
-                year: orderDate.getFullYear(),
-                month: orderDate.getMonth(),
-              },
-              farmerName: farmer.fname + ' ' + farmer.lname,
-              farmerEmail: farmer.email,
-              farmerAddress: farmer.bAddress,
-            },
-            { upsert: true, session: session }
-          );
-
-          //updating farmer balances and closing the past month invoice if a new one was created
-          if (farmerInvoice == null) {
-            //if a new invoice was created, then its a new month, therefore,
-            //reset accumulated balances to 0 and close the last month invoice
-            await User.findByIdAndUpdate(
-              order.farmer,
-              {
-                $inc: {
-                  'farmer.withdrawable': balanceToUpdate,
-                },
-                'farmer.lastBalanceUpdate': date,
-                'farmer.accCommissionCharges': order.commission,
-                'farmer.accTotalEarnings':
-                  order.totalPrice + order.totalDeliveryCharge,
-                'farmer.accCashEarnings': cashOnDelivery,
-              },
-
-              { session: session }
-            );
-          } else {
-            await User.findByIdAndUpdate(
-              order.farmer,
-              {
-                $inc: {
-                  'farmer.withdrawable': balanceToUpdate,
-                  'farmer.accCommissionCharges': order.commission,
-                  'farmer.accTotalEarnings':
-                    order.totalPrice + order.totalDeliveryCharge,
-                  'farmer.accCashEarnings': cashOnDelivery,
-                  //'farmer.accCouponCharges': someamount, coupon management
-                },
-                'farmer.lastBalanceUpdate': date,
-              },
-              { session: session }
-            );
-          }
-          //updating company invoice for the current month
-
-          const companyInvoiceId = `${orderDate
-            .getMonth()
-            .toString()
-            .padStart(2, 0)}-${orderDate.getFullYear()}`;
-          const companyInvoice = await CompanyMonthInvoice.findOneAndUpdate(
-            { invoiceId: companyInvoiceId },
-            {
-              $inc: {
-                totalEarnings: order.totalPrice + order.totalDeliveryCharge,
-                commissionAmount: order.commission,
-              },
-              $push: { orders: order._id },
-              date: {
-                year: orderDate.getFullYear(),
-                month: orderDate.getMonth(),
-              },
-            },
-            { upsert: true, session: session }
-          );
         });
       } catch (err) {
-        console.log('Error: ', err);
+        console.log(err);
       }
     }
-  } catch (err) {
-    console.log('Error 2: ', err);
   }
+}
 
-  //closing invoices of past month
+async function closeInvoicesAtMonthEnd(session, date) {
+  //closing invoices at the end of month
   if (date.getDate() == 5) {
     const prevMonth = getPreviousMonth(date);
     try {
@@ -190,7 +243,8 @@ exports.clearFundsForOrder = async () => {
           { invoiceId: prevMonth },
           {
             status: 'Closed',
-          }
+          },
+          { session: session }
         );
         await FarmerMonthInvoice.updateMany(
           {
@@ -198,11 +252,12 @@ exports.clearFundsForOrder = async () => {
           },
           {
             status: 'Closed',
-          }
+          },
+          { session: session }
         );
       });
     } catch (err) {
       console.log(err);
     }
   }
-};
+}
