@@ -142,8 +142,7 @@ async function clearFundsForOrder(session, date, report) {
         }).session(session);
         appendToReport(report, 'Marked Order #' + order._id + ' as closed');
 
-        const farmerInvoiceId = `${order.farmer}-${orderDate
-          .getMonth()
+        const farmerInvoiceId = `${order.farmer}-${(orderDate.getMonth() + 1)
           .toString()
           .padStart(2, 0)}-${orderDate.getFullYear()}`;
         const farmerUser = await User.findById(order.farmer).session(session);
@@ -237,8 +236,7 @@ async function clearFundsForOrder(session, date, report) {
 
         //updating company invoice for the current month
 
-        const companyInvoiceId = `${orderDate
-          .getMonth()
+        const companyInvoiceId = `${(orderDate.getMonth() + 1)
           .toString()
           .padStart(2, 0)}-${orderDate.getFullYear()}`;
 
