@@ -97,6 +97,14 @@ const userSchema = new Schema({
         required: true,
         default: 0,
       },
+      lastBalanceUpdate: {
+        type: Date,
+        default: null,
+      },
+      negativeBalanceSince: {
+        type: Date,
+        default: null,
+      },
       hasVehicle: {
         type: Boolean,
         required: true,
@@ -122,6 +130,18 @@ const userSchema = new Schema({
       followers:{
         type:[ObjectId],
         min:null
+      },
+      status: {
+        type: String,
+        required: true,
+        default: 'Quarantined',
+        enum: ['Active', 'Suspended', 'Deleted', 'Banned', 'Quarantined'],
+      },
+      finStatus: {
+        type: String,
+        required: true,
+        default: 'Active',
+        enum: ['Active', 'Suspended'],
       },
       bankAccount: new Schema(
         {
