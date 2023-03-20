@@ -376,3 +376,32 @@ exports.postEditCard = async (req, res, next) => {
     return;
   }
 };
+
+
+
+exports.getProducts = async (req, res, next) => {
+  Product.find().populate({path:'farmer',populate:{path:'farmer'}}).then(products=>{
+    const dataToSend=[];
+    console.log(products)
+    for(let prod of products){
+      
+      const data={};
+      data["_id"]=prod._id;
+      data["title"]=prod.title
+      data["imageUrl"]=prod.imageUrls[0]
+      data["price"]=prod.price
+      data["overallRating"]=prod.overallRating
+      data["unit"]=prod.unit
+      data["farmer"]=prod.farmer
+      data["description"]=prod.description
+      dataToSend.push(data)
+
+    }
+    res.status(200).send({message:"success",products:dataToSend})
+
+      
+    
+  }).catch(err=>{
+    res.status(500).send(err)
+  })
+};
