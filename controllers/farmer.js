@@ -161,7 +161,7 @@ exports.updateproductdetails = async (req, res, next) => {
 
 exports.supportTicket = (req, res, next) => {
   // console.log(req.body);
-  const { name, number, issue, desc } = req.body;
+  const { name, number, issue, desc, email, orderId } = req.body;
   const userEmail = req.user.email;
 
   const newSupportTicket = new SupportTicket({
@@ -170,12 +170,14 @@ exports.supportTicket = (req, res, next) => {
     number: number,
     issue: issue,
     description: desc,
+    email: email,
+    orderId: orderId,
   });
 
   newSupportTicket.save((err, ticket) => {
     if (err) {
       console.log(err);
-      res.status(500).send('Error saving data');
+      res.status(500).json({message: 'Can not save data', error: err});
     } else {
       console.log('success');
       res.status(200).json({ message: 'Success', id: ticket._id });
@@ -185,7 +187,6 @@ exports.supportTicket = (req, res, next) => {
 
 exports.getSupportTicket = async (req, res) => {
   try {
-    // console.log('hii');
     const supportTickets = await SupportTicket.find({});
     res.status(200).json({ message: 'Success', supportTicket: supportTickets });
   } catch (error) {
@@ -247,6 +248,25 @@ exports.createCoupon = (req, res, next) => {
     }
   });
 };
+
+exports.verifyCouponCode = async (req, res, next) => {
+  console.log('hiii');
+  const cCode = req.body.cCode;
+  console.log(cCode);
+  try {
+    const coupon = await Coupon.find({cCode:cCode});
+    // console.log(coupon);
+    if(coupon.length > 0){
+      res.status(200).json({ message: 'Code is already in the database', cCode:cCode, isExist: true });
+    } else {
+      res.status(200).json({ message: 'Code is unique', cCode:cCode, isExist: false });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+  
+}
+
 exports.getBanks = async (req, res, next) => {
   const banks = await Bank.find();
   res.status(200).json({ message: 'Success', banks: banks });
