@@ -72,6 +72,31 @@ const userSchema = new Schema({
         type: String,
         required: true,
       },
+      accCashEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accTotalEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCommissionCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCouponCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      withdrawable: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
       hasVehicle: {
         type: Boolean,
         required: true,
@@ -98,6 +123,14 @@ const userSchema = new Schema({
         type:[ObjectId],
         min:null
       },
+      bankAccount: new Schema(
+        {
+          Bank: { type: ObjectId, required: true },
+          AccountName: { type: String, required: true },
+          AccountNumber: { type: String, required: true },
+        },
+        { _id: false }
+      ),
     },
     { _id: false }
   ),

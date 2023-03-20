@@ -47,6 +47,7 @@ const orderSchema = new Schema({
         pickedUp: Date,
         cancelled: Date,
         failed: Date,
+        closed: Date,
       },
       { _id: false }
     ),
@@ -60,6 +61,7 @@ const orderSchema = new Schema({
       pickedUp: null,
       cancelled: null,
       failed: null,
+      closed: null,
     },
   },
   items: [
@@ -73,10 +75,6 @@ const orderSchema = new Schema({
           type: Number,
           required: true,
         },
-        commission: {
-          type: Number,
-          required: true,
-        },
         itemId: {
           type: ObjectId,
           required: true,
@@ -86,6 +84,11 @@ const orderSchema = new Schema({
     ),
   ],
   totalPrice: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  commission: {
     type: Number,
     required: true,
     default: 0,
