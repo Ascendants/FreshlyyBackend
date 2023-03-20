@@ -1,6 +1,6 @@
-const express = require("express");
+const express = require('express');
 
-const farmerController = require("../controllers/farmer");
+const farmerController = require('../controllers/farmer');
 
 const router = express.Router();
 
@@ -8,10 +8,14 @@ const { body } = require('express-validator');
 
 // router.get('/product/:purl', publicController.getProduct);
 // router.get('/user', publicController.createUser);
-router.get("/hello", farmerController.getHello);
-router.get("/dashboard", farmerController.getDashboard);
+router.get('/hello', farmerController.getHello);
+router.get('/dashboard', farmerController.getDashboard);
 
 router.get('/get-banks', farmerController.getBanks);
+
+router.get('/earnings', farmerController.getEarnings);
+
+router.post('/payout-request', farmerController.postPayoutRequest);
 
 router.post(
   '/save-account',

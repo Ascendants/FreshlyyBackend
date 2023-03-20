@@ -8,21 +8,29 @@ const payoutRequestSchema = new Schema({
   },
   amount: {
     type: ObjectId,
-    require: true,
+    required: true,
+  },
+  farmerName: {
+    type: String,
+    required: true,
+  },
+  farmerEmail: {
+    type: String,
+    required: true,
+  },
+  farmerAddress: {
+    type: String,
+    required: true,
   },
   payRef: {
     type: String,
     default: null,
   },
-  payable: {
-    type: Boolean,
-    default: false,
-  },
   update: {
     type: new Schema(
       {
         created: Date,
-        received: Date,
+        acknowledged: Date, // when an admin acknowledges
         cleared: Date,
       },
       { _id: false }
@@ -30,7 +38,7 @@ const payoutRequestSchema = new Schema({
     required: true,
     default: {
       created: Date.now(),
-      received: null,
+      acknowledged: null,
       cleared: null,
     },
   },

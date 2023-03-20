@@ -12,6 +12,11 @@ const productSchema = new Schema({
     default: 'Quarantined',
     enum: ['Quarantined', 'Live', 'Paused', 'Deleted'],
   },
+  farmerAvailable: {
+    type: Boolean,
+    required: true,
+    default: true,
+  },
   description: {
     type: String,
     required: true,
