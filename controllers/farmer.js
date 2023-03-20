@@ -365,3 +365,48 @@ exports.postPayoutRequest = async (req, res, next) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
+exports.changeFarmerFinStatus = async (farmerId, status, session) => {
+  if (status == 'Active') {
+    try {
+      await Product.updateMany(
+        { farmer: farmerId },
+        { farmerAvailable: true },
+        { session: session }
+      );
+      await session.withTransaction(async () => {
+        await User.findByIdAndUpdate(
+          farmerId,
+          {
+            'farmer.finStatus': 'Active',
+          },
+          { session: session }
+        );
+      });
+      return true;
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+  }
+  try {
+    await session.withTransaction(async () => {
+      await Product.updateMany(
+        { farmer: farmerId },
+        { farmerAvailable: false },
+        { session: session }
+      );
+      await User.findByIdAndUpdate(
+        farmerId,
+        {
+          'farmer.finStatus': 'Suspended',
+        },
+        { session: session }
+      );
+    });
+    return true;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
+};

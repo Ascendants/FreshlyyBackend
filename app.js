@@ -22,6 +22,7 @@ const customerRoutes = require('./routes/customer');
 const farmerRoutes = require('./routes/farmer');
 const errorController = require('./controllers/error');
 const taskController = require('./controllers/tasks');
+const Product = require('./models/Product');
 
 //put your routes here
 app.use('/', async (req, res, next) => {

@@ -6,6 +6,7 @@ const FarmerMonthInvoice = require('../models/FarmerMonthInvoice');
 const CompanyMonthInvoice = require('../models/CompanyMonthInvoice');
 const mongoose = require('mongoose');
 const customerController = require('../controllers/customer');
+const farmerController = require('../controllers/farmer');
 
 exports.cancelOrdersNotPaid = async () => {
   const orders = await Order.find({
@@ -169,12 +170,18 @@ async function clearFundsForOrder(session, date) {
 
         if (farmerUser.farmer.withdrawable + balanceToUpdate >= 0) {
           farmerUpdates['farmer.negativeBalanceSince'] = null;
-          farmerUpdates['farmer.finStatus'] = 'Active';
         }
 
         await User.findByIdAndUpdate(order.farmer, farmerUpdates, {
           session: session,
         });
+        if (farmerUser.farmer.withdrawable + balanceToUpdate >= 0) {
+          await farmerController.changeFarmerFinStatus(
+            order.farmer,
+            'Active',
+            session
+          );
+        }
 
         //updating company invoice for the current month
 
@@ -218,22 +225,15 @@ async function suspendFarmersWhoHaventPaid(session, date) {
     }
     const timeSinceNegativeBalance =
       (Date.now() - new Date(farmerUser.farmer.negativeBalanceSince)) /
-      36e5 /
-      24;
+        36e5 /
+        24 +
+      30;
     if (timeSinceNegativeBalance > 30) {
-      try {
-        await session.withTransaction(async () => {
-          await User.findByIdAndUpdate(
-            farmerUser._id,
-            {
-              'farmer.finStatus': 'Suspended',
-            },
-            { session: session }
-          );
-        });
-      } catch (err) {
-        console.log(err);
-      }
+      await farmerController.changeFarmerFinStatus(
+        farmerUser._id,
+        'Suspended',
+        session
+      );
     }
   }
 }
