@@ -366,19 +366,27 @@ exports.postPayoutRequest = async (req, res, next) => {
   }
 };
 
-exports.changeFarmerFinStatus = async (farmerId, status, session) => {
-  if (status == 'Active') {
+exports.changeFarmerFinStatus = async (
+  farmerId,
+  status,
+  session,
+  withTransaction = false
+) => {
+  if (!(status == 'Active' || status == 'Suspended')) {
+    return false;
+  }
+  if (withTransaction) {
     try {
-      await Product.updateMany(
-        { farmer: farmerId },
-        { farmerAvailable: true },
-        { session: session }
-      );
       await session.withTransaction(async () => {
+        await Product.updateMany(
+          { farmer: farmerId },
+          { farmerAvailable: status == 'Active' },
+          { session: session }
+        );
         await User.findByIdAndUpdate(
           farmerId,
           {
-            'farmer.finStatus': 'Active',
+            'farmer.finStatus': status,
           },
           { session: session }
         );
@@ -389,24 +397,16 @@ exports.changeFarmerFinStatus = async (farmerId, status, session) => {
       return false;
     }
   }
-  try {
-    await session.withTransaction(async () => {
-      await Product.updateMany(
-        { farmer: farmerId },
-        { farmerAvailable: false },
-        { session: session }
-      );
-      await User.findByIdAndUpdate(
-        farmerId,
-        {
-          'farmer.finStatus': 'Suspended',
-        },
-        { session: session }
-      );
-    });
-    return true;
-  } catch (err) {
-    console.log(err);
-    return false;
-  }
+  await Product.updateMany(
+    { farmer: farmerId },
+    { farmerAvailable: status == 'Active' },
+    { session: session }
+  );
+  await User.findByIdAndUpdate(
+    farmerId,
+    {
+      'farmer.finStatus': status,
+    },
+    { session: session }
+  );
 };

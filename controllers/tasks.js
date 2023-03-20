@@ -224,15 +224,14 @@ async function suspendFarmersWhoHaventPaid(session, date) {
       continue;
     }
     const timeSinceNegativeBalance =
-      (Date.now() - new Date(farmerUser.farmer.negativeBalanceSince)) /
-        36e5 /
-        24 +
+      (date - new Date(farmerUser.farmer.negativeBalanceSince)) / 36e5 / 24 +
       30;
     if (timeSinceNegativeBalance > 30) {
       await farmerController.changeFarmerFinStatus(
         farmerUser._id,
         'Suspended',
-        session
+        session,
+        true
       );
     }
   }
