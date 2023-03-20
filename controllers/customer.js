@@ -945,10 +945,10 @@ exports.getProducts = async (req, res, next) => {
     );
     const sortedResult = cheaperProducts.concat(expensiveProducts);
 
-    res.json(sortedResult);
+    res.status(200).json({message:'Succes',mainPageProducts:sortedResult})
   } catch (error) {
     console.error(error);
-    res.status(500).send("Server Error! something is wrong");
+    res.status(500).json({message:'Unsuccessful'})
   }
 };
 

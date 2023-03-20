@@ -25,7 +25,7 @@ router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
 
-router.get('/main-page', customerController.getProducts);
+router.get('/mainpage', customerController.getProducts);
 
 router.get('/social-corner', customerController.getSocialProducts);
 
