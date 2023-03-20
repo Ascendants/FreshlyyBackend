@@ -1025,7 +1025,7 @@ exports.getProducts = async (req, res, next) => {
             const distanceData = await distanceResponse.json();
             // console.log(distanceData)
             distanceValue = distanceData.rows[0].elements[0].distance.text;
-            distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
+            distanceNum = parseFloat(distanceValue.replace("Km", "").trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
             totalPrice = calculateTotalPrice(
               product.price,
