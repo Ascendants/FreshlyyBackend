@@ -397,16 +397,22 @@ exports.changeFarmerFinStatus = async (
       return false;
     }
   }
-  await Product.updateMany(
-    { farmer: farmerId },
-    { farmerAvailable: status == 'Active' },
-    { session: session }
-  );
-  await User.findByIdAndUpdate(
-    farmerId,
-    {
-      'farmer.finStatus': status,
-    },
-    { session: session }
-  );
+  try {
+    await Product.updateMany(
+      { farmer: farmerId },
+      { farmerAvailable: status == 'Active' },
+      { session: session }
+    );
+    await User.findByIdAndUpdate(
+      farmerId,
+      {
+        'farmer.finStatus': status,
+      },
+      { session: session }
+    );
+    return true;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
 };
