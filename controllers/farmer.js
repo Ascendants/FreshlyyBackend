@@ -186,6 +186,21 @@ exports.supportTicket = (req, res, next) => {
 };
 
 exports.getSupportTicket = async (req, res) => {
+  const ticketId = req.params.id;
+  console.log(ticketId);
+  try {
+    const supportTicket = await SupportTicket.findById(ticketId);
+    console.log(supportTicket);
+    res.status(200).json({message:"Success", supportTicket: supportTicket});
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ message: 'Error fetching supportTicket from database' });
+  }
+}
+
+exports.getSupportTickets = async (req, res) => {
   try {
     const supportTickets = await SupportTicket.find({});
     res.status(200).json({ message: 'Success', supportTicket: supportTickets });
@@ -193,7 +208,7 @@ exports.getSupportTicket = async (req, res) => {
     console.log(error);
     res
       .status(500)
-      .json({ message: 'Error fetching supportTicket from database' });
+      .json({ message: 'Error fetching supportTickets from database' });
   }
 };
 

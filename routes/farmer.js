@@ -24,7 +24,8 @@ router.post(
 );
 
 //make this admin routes
-router.get('/get-support-tickets', farmerController.getSupportTicket);
+router.get('/support-tickets', farmerController.getSupportTickets);
+router.get('/support-ticket/:id', farmerController.getSupportTicket); 
 router.put('/update-support-ticket/:id', farmerController.updateSupportTicket);
 router.delete('/delete-support-ticket/:id', farmerController.deleteSupportTicket);
 router.post('/support-ticket', farmerController.supportTicket);
