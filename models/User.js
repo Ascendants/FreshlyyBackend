@@ -37,10 +37,25 @@ const userSchema = new Schema({
     enum: ['Active', 'Suspended', 'Deleted', 'Banned'],
   },
   profilePicUrl: {
-    type: String,
+    type: new Schema(
+      {
+        imageUrl: {
+          type: String,
+          required: true,
+        },
+        placeholder: {
+          type: String,
+          required: true,
+        },
+      },
+      { _id: false }
+    ),
     required: true,
-    default:
-      'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fuser.svg?alt=media&token=e71a192a-5c46-4025-b1f9-1391c7ad05ac',
+    default: {
+      imageUrl:
+        'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fuser.svg?alt=media&token=e71a192a-5c46-4025-b1f9-1391c7ad05ac',
+      blurHash: 'LDH{HBt600Rj0LWB_3ofXNjs_Mj[',
+    },
   },
   bAddress: {
     type: String,
@@ -56,6 +71,39 @@ const userSchema = new Schema({
       occupation: {
         type: String,
         required: true,
+      },
+      accCashEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accTotalEarnings: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCommissionCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      accCouponCharges: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      withdrawable: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      lastBalanceUpdate: {
+        type: Date,
+        default: null,
+      },
+      negativeBalanceSince: {
+        type: Date,
+        default: null,
       },
       hasVehicle: {
         type: Boolean,
@@ -79,6 +127,26 @@ const userSchema = new Schema({
       saleLocation: {
         type: [Location],
       },
+      status: {
+        type: String,
+        required: true,
+        default: 'Quarantined',
+        enum: ['Active', 'Suspended', 'Deleted', 'Banned', 'Quarantined'],
+      },
+      finStatus: {
+        type: String,
+        required: true,
+        default: 'Active',
+        enum: ['Active', 'Suspended'],
+      },
+      bankAccount: new Schema(
+        {
+          Bank: { type: ObjectId, required: true },
+          AccountName: { type: String, required: true },
+          AccountNumber: { type: String, required: true },
+        },
+        { _id: false }
+      ),
     },
     { _id: false }
   ),
