@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const Location = require('./Location');
+const BankAccount = require('./BankAccount');
 const userSchema = new Schema({
   fname: {
     type: String,
@@ -139,14 +140,7 @@ const userSchema = new Schema({
         default: 'Active',
         enum: ['Active', 'Suspended'],
       },
-      bankAccount: new Schema(
-        {
-          Bank: { type: ObjectId, required: true },
-          AccountName: { type: String, required: true },
-          AccountNumber: { type: String, required: true },
-        },
-        { _id: false }
-      ),
+      bankAccount: BankAccount,
     },
     { _id: false }
   ),

@@ -17,6 +17,10 @@ router.get('/earnings', farmerController.getEarnings);
 
 router.post('/payout-request', farmerController.postPayoutRequest);
 
+router.get('/payout-requests', farmerController.getPayoutRequests);
+
+router.get('/invoices', farmerController.getInvoices);
+
 router.post(
   '/save-account',
   [
