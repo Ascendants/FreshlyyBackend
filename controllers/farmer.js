@@ -187,10 +187,8 @@ exports.supportTicket = (req, res, next) => {
 
 exports.getSupportTicket = async (req, res) => {
   const ticketId = req.params.id;
-  console.log(ticketId);
   try {
     const supportTicket = await SupportTicket.findById(ticketId);
-    console.log(supportTicket);
     res.status(200).json({message:"Success", supportTicket: supportTicket});
   } catch (error) {
     console.log(error);
