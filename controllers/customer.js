@@ -291,10 +291,8 @@ exports.getCreateStripeCustomer = async (req, res, next) => {
     return;
   }
 };
-
+//Getting all the cart items for a user
 exports.getCart = async (req, res, next) => {
-  //needs to be edited when adding cart management
-  console.log('Hello');
   const cart = req.user.customer.cart.toObject();
   if (!cart) {
     res.status(200).json({ message: 'Success', cart: null });
@@ -303,6 +301,7 @@ exports.getCart = async (req, res, next) => {
     for (let farmerItem of cart) {
       const farmer = await User.findById(farmerItem.farmer);
       farmerItem.farmerName = farmer.fname;
+      let totalPrice = 0;
       for (let cartItem of farmerItem.items) {
         const product = await Product.findOne({
           _id: cartItem.item,
@@ -311,8 +310,11 @@ exports.getCart = async (req, res, next) => {
         cartItem.title = product.title;
         cartItem.uPrice = product.price;
         cartItem.farmerName = farmer.fname;
+        totalPrice += cartItem.uPrice * cartItem.qty;
+        cartItem.totalPrice = totalPrice;
       }
     }
+    
     res.status(200).json({ message: 'Success', cart: cart });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
@@ -326,13 +328,15 @@ exports.postCart = async (req, res) => {
   quantity = parseFloat(quantity);
   const product = await Product.findById(productId);
   const cart = req.user.customer.cart;
-
+  
   if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
-  if (product.qtyAvailable < quantity) {
-    return res.status(404).json({ message: 'Quantity Unavailable' });
-  }
+  // if (product.qtyAvailable < quantity) {
+  //   return res.status(404).json({ message: 'Quantity Unavailable' });
+  // }
+
+  //Check if the product is already in the cart
   let cartItem;
   cart.forEach((farmer) => {
     farmer.items.forEach((item) => {
@@ -342,10 +346,10 @@ exports.postCart = async (req, res) => {
     });
   });
   if (cartItem) {
-    if (product.qtyAvailable < quantity) {
+    if (quantity < product.qtyAvailable) {
       cartItem.qty += quantity;
       req.user.save();
-      return res.status(200).json({ message: 'Success' });
+      return res.status(200).json({ message: 'Success' }); 
     }
     return res.status(404).json({ message: 'Quantity unavailable' });
   }
