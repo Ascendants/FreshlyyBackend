@@ -159,7 +159,7 @@ exports.updateproductdetails = async (req, res, next) => {
 //   updateProduct(productId, updatedFields);
 // };
 
-exports.supportTicket = (req, res, next) => {
+exports.supportTicket = (req, res, next) => { 
   // console.log(req.body);
   const { name, number, issue, desc, email, orderId } = req.body;
   const userEmail = req.user.email;
@@ -187,6 +187,7 @@ exports.supportTicket = (req, res, next) => {
 
 exports.getSupportTicket = async (req, res) => {
   const ticketId = req.params.id;
+  console.log(ticketId);
   try {
     const supportTicket = await SupportTicket.findById(ticketId);
     res.status(200).json({message:"Success", supportTicket: supportTicket});

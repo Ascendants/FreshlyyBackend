@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const moment = require('moment');
 const { ObjectId } = require('mongodb');
 const cron = require('node-cron');
+const SupportTicket = require('../models/SupportTicket');
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
   master:
@@ -964,6 +965,16 @@ exports.getSocialProducts = async (req, res, next) => {
     res
       .status(200)
       .json({ message: "Success", socialProducts: dataOfProducts });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.getTickets = async (req, res, next) => {
+  try{
+    const email = req.user.email;
+    const tickets = await SupportTicket.find({userEmail: email});
+    res.status(200).json({message: "Success", tickets: tickets});
   } catch (error) {
     console.log(error);
   }

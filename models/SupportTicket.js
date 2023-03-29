@@ -36,6 +36,10 @@ const supportTicketSchema = new Schema(
       enum: ["Pending", "Processing", "Complete"],
       default: "Pending",
     },
+    date: {
+      type: Date,
+      default: () => Date.now(),
+    }
   },
 );
 module.exports = mongoose.model('SupportTicket', supportTicketSchema);
