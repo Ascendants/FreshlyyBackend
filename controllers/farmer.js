@@ -18,6 +18,7 @@ exports.getHello = async (req, res, next) => {
   res.status(200).json({ message: 'Hello' });
 };
 
+//Geting all the farmer's dashboard data
 exports.getDashboard = async (req, res, next) => {
   // const data = {
   // 	fname: 'Nadun',
@@ -164,7 +165,7 @@ exports.updateproductdetails = async (req, res, next) => {
 //   updateProduct(productId, updatedFields);
 // };
 
-exports.supportTicket = (req, res, next) => { 
+exports.supportTicket = (req, res, next) => {
   // console.log(req.body);
   const { name, number, issue, desc, email, orderId } = req.body;
   const userEmail = req.user.email;
@@ -182,7 +183,7 @@ exports.supportTicket = (req, res, next) => {
   newSupportTicket.save((err, ticket) => {
     if (err) {
       console.log(err);
-      res.status(500).json({message: 'Can not save data', error: err});
+      res.status(500).json({ message: 'Can not save data', error: err });
     } else {
       console.log('success');
       res.status(200).json({ message: 'Success', id: ticket._id });
@@ -195,14 +196,14 @@ exports.getSupportTicket = async (req, res) => {
   console.log(ticketId);
   try {
     const supportTicket = await SupportTicket.findById(ticketId);
-    res.status(200).json({message:"Success", supportTicket: supportTicket});
+    res.status(200).json({ message: 'Success', supportTicket: supportTicket });
   } catch (error) {
     console.log(error);
     res
       .status(500)
       .json({ message: 'Error fetching supportTicket from database' });
   }
-}
+};
 
 exports.getSupportTickets = async (req, res) => {
   try {
@@ -273,18 +274,25 @@ exports.verifyCouponCode = async (req, res, next) => {
   const cCode = req.body.cCode;
   console.log(cCode);
   try {
-    const coupon = await Coupon.find({cCode:cCode});
+    const coupon = await Coupon.find({ cCode: cCode });
     // console.log(coupon);
-    if(coupon.length > 0){
-      res.status(200).json({ message: 'Code is already in the database', cCode:cCode, isExist: true });
+    if (coupon.length > 0) {
+      res
+        .status(200)
+        .json({
+          message: 'Code is already in the database',
+          cCode: cCode,
+          isExist: true,
+        });
     } else {
-      res.status(200).json({ message: 'Code is unique', cCode:cCode, isExist: false });
+      res
+        .status(200)
+        .json({ message: 'Code is unique', cCode: cCode, isExist: false });
     }
   } catch (error) {
     console.log(error);
   }
-  
-}
+};
 
 exports.getBanks = async (req, res, next) => {
   try {
@@ -495,7 +503,7 @@ exports.getInvoices = async (req, res, next) => {
   try {
     const invoices = await FarmerMonthInvoice.find({
       farmerId: req.user._id,
-      status:'Closed',
+      status: 'Closed',
     }).sort({ _id: -1 });
     const data = [];
     for (let invoice of invoices) {
