@@ -9,25 +9,37 @@ const supportTicketSchema = new Schema(
     },
     name: {
       type: String,
-      required: true,
+      required: false,
     },
     number: {
       type: Number,
-      required: true,
+      required: false,
     },
     issue: {
       type: String,
-      required: true,
+      required: false,
     },
     description: {
       type: String,
-      required: true,
+      required: false,
+    },
+    email: {
+      type: String,
+      required: false,
+    },
+    orderId: {
+      type: ObjectId,
+      required: false,
     },
     status: {
       type: String,
       enum: ["Pending", "Processing", "Complete"],
       default: "Pending",
     },
+    date: {
+      type: Date,
+      default: () => Date.now(),
+    }
   },
 );
 module.exports = mongoose.model('SupportTicket', supportTicketSchema);
