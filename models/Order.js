@@ -47,6 +47,7 @@ const orderSchema = new Schema({
         pickedUp: Date,
         cancelled: Date,
         failed: Date,
+        closed: Date,
       },
       { _id: false }
     ),
@@ -60,6 +61,7 @@ const orderSchema = new Schema({
       pickedUp: null,
       cancelled: null,
       failed: null,
+      closed: null,
     },
   },
   items: [
@@ -70,10 +72,6 @@ const orderSchema = new Schema({
           required: true,
         },
         qty: {
-          type: Number,
-          required: true,
-        },
-        commission: {
           type: Number,
           required: true,
         },
@@ -90,6 +88,11 @@ const orderSchema = new Schema({
     required: true,
     default: 0,
   },
+  commission: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
   totalDeliveryCharge: {
     type: Number,
   },
@@ -101,7 +104,7 @@ const orderSchema = new Schema({
         required: true,
         default: 'COD',
       },
-      cardRef: {
+      payRef: {
         type: String,
       },
       couponCode: {
@@ -114,7 +117,7 @@ const orderSchema = new Schema({
       status: {
         type: String,
         required: true,
-        enum: ['Success', 'Fail'],
+        enum: ['Success', 'Failed', 'Pending', 'Refunded'],
       },
     }),
   ],

@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-
+const cron = require('node-cron');
 const app = express();
 const cors = require('cors');
 
@@ -10,6 +10,7 @@ const cors = require('cors');
 const corsOptions = {
   origin: process.env.CLIENT,
   credentials: true,
+  origin:"*",
 };
 app.use(cors(corsOptions));
 app.options('*', cors());
@@ -21,6 +22,8 @@ const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
 const farmerRoutes = require('./routes/farmer');
 const errorController = require('./controllers/error');
+const taskController = require('./controllers/tasks');
+const Product = require('./models/Product');
 
 //put your routes here
 app.use('/', async (req, res, next) => {
@@ -39,10 +42,6 @@ app.use('/', async (req, res, next) => {
   }
 });
 
-app.use('/test', async (req, res, next) => {
-  console.log(req.query);
-});
-
 app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
@@ -54,6 +53,7 @@ mongoose
   .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
+    taskController.runDailyTasks();
     app.listen(process.env.PORT);
   })
   .catch((err) => console.log(err));
