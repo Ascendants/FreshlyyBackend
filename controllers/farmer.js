@@ -1,12 +1,17 @@
 const Product = require('../models/Product');
 const User = require('../models/User');
+const moment = require('moment');
 const Order = require('../models/Order');
 const { ObjectId } = require('mongodb');
 const Bank = require('../models/Bank');
 const SupportTicket = require('../models/SupportTicket');
 const Coupon = require('../models/Coupon');
+const { logger } = require('../util/logger');
+const PayoutRequest = require('../models/PayoutRequest');
+const mongoose = require('mongoose');
 
 const { validationResult } = require('express-validator');
+const FarmerMonthInvoice = require('../models/FarmerMonthInvoice');
 
 exports.getHello = async (req, res, next) => {
   console.log('Hello');
@@ -282,8 +287,13 @@ exports.verifyCouponCode = async (req, res, next) => {
 }
 
 exports.getBanks = async (req, res, next) => {
-  const banks = await Bank.find();
-  res.status(200).json({ message: 'Success', banks: banks });
+  try {
+    const banks = await Bank.find();
+    res.status(200).json({ message: 'Success', banks: banks });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
 };
 
 exports.postCreateBank = async (req, res, next) => {
@@ -324,25 +334,180 @@ exports.postSaveAccount = async (req, res, next) => {
   }
 };
 
-//   // usage
-//   const productId = "63f4d385b1a06dad48ec25ba";
-//   const updatedFields = {
-//     title: title,
-//     status: "Paused",
-//     description: description,
-//     price: price,
-//     overallRating: 3,
-//     minQtyIncrement: minQtyIncrement,
-//     unit: "KG",
-//     farmer: user,
-//     qtyAvailable: qtyAvailable,
-//     imageUrls: [
-//       {
-//         imageUrl:
-//           "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa",
-//         placeholder: "#9c7954",
-//       },
-//     ],
-//   };
-//   updateProduct(productId, updatedFields);
-// };
+exports.getEarnings = async (req, res, next) => {
+  const updatedDate = new Date(req.user.farmer.lastBalanceUpdate);
+  try {
+    let bank = null;
+    let accountNumber = null;
+    if (req.user.farmer.bankAccount) {
+      bank = (await Bank.findById(req.user.farmer.bankAccount.Bank)).BankName;
+      accountNumber =
+        req.user.farmer.bankAccount.AccountNumber.slice(0, -4).replace(
+          /./g,
+          '*'
+        ) + req.user.farmer.bankAccount.AccountNumber.slice(-4);
+    }
+    data = {
+      totalEarnings: req.user.farmer.accTotalEarnings,
+      commissionCharged: req.user.farmer.accCommissionCharges,
+      cashInHand: req.user.farmer.accCashEarnings,
+      withdrawable: req.user.farmer.withdrawable,
+      couponCharges: req.user.farmer.accCouponCharges,
+      lastUpdate:
+        moment(updatedDate).format('DD-MM-YYYY') +
+        ' at ' +
+        moment(updatedDate).format('HH:mm'),
+      couponCharges: req.user.farmer.accCouponCharges,
+      isWithdrawable: req.user.farmer.withdrawable > 2000,
+      hasBankAccount: req.user.farmer.bankAccount != null,
+      bank: bank,
+      bankAccountNum: accountNumber,
+      negativeSince: req.user.farmer.negativeBalanceSince
+        ? moment(new Date(req.user.farmer.negativeBalanceSince)).format(
+            'DD-MM-YYYY'
+          )
+        : null,
+    };
+    res.status(200).json({ message: 'Success', earnings: data });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.postPayoutRequest = async (req, res, next) => {
+  if (req.user.farmer.withdrawable < 2000) {
+    return res.status(403).json({ message: 'Insufficient Balance' });
+  }
+  const session = await mongoose.startSession();
+  try {
+    const payoutRequest = new PayoutRequest({
+      farmerId: req.user._id,
+      amount: req.user.farmer.withdrawable,
+      farmerName: req.user.fname + ' ' + req.user.lname,
+      farmerEmail: req.user.email,
+      farmerAddress: req.user.bAddress,
+      account: req.user.farmer.bankAccount,
+    });
+    req.user.farmer.withdrawable = 0;
+    await session.withTransaction(async () => {
+      await payoutRequest.save({ session: session });
+      await req.user.save({ session: session });
+    });
+    res
+      .status(200)
+      .json({ message: 'Success', payoutRequestId: payoutRequest._id });
+  } catch (err) {
+    logger(err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.changeFarmerFinStatus = async (
+  farmerId,
+  status,
+  session,
+  withTransaction = false
+) => {
+  if (!(status == 'Active' || status == 'Suspended')) {
+    return false;
+  }
+  if (withTransaction) {
+    try {
+      await session.withTransaction(async () => {
+        await Product.updateMany(
+          { farmer: farmerId },
+          { farmerAvailable: status == 'Active' },
+          { session: session }
+        );
+        await User.findByIdAndUpdate(
+          farmerId,
+          {
+            'farmer.finStatus': status,
+          },
+          { session: session }
+        );
+      });
+      return true;
+    } catch (err) {
+      console.log(err);
+      return false;
+    }
+  }
+  try {
+    await Product.updateMany(
+      { farmer: farmerId },
+      { farmerAvailable: status == 'Active' },
+      { session: session }
+    );
+    await User.findByIdAndUpdate(
+      farmerId,
+      {
+        'farmer.finStatus': status,
+      },
+      { session: session }
+    );
+    return true;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
+};
+
+exports.getPayoutRequests = async (req, res, next) => {
+  try {
+    const payoutRequests = await PayoutRequest.find({ farmerId: req.user._id });
+    const data = [];
+    for (request of payoutRequests) {
+      const bank = (await Bank.findById(request.account.Bank)).BankName;
+      const accountNumber =
+        request.account.AccountNumber.slice(0, -4).replace(/./g, '*') +
+        request.account.AccountNumber.slice(-4);
+      data.push({
+        id: request._id,
+        amount: request.amount,
+        created: request.update.created
+          ? moment(request.update.created).format('DD-MM-YYYY')
+          : null,
+        acknowledged: request.update.acknowledged
+          ? moment(request.update.acknowledged).format('DD-MM-YYYY')
+          : null,
+        cleared: request.update.cleared
+          ? moment(request.update.cleared).format('DD-MM-YYYY')
+          : null,
+        rejected: request.update.rejected
+          ? moment(request.update.rejected).format('DD-MM-YYYY')
+          : null,
+        rejectionReason: request.rejectionReason,
+        payRef: request.payRef,
+        bank: bank,
+        bankAccountName: request.account.AccountName,
+        bankAccountNum: accountNumber,
+      });
+    }
+    res.status(200).json({ message: 'Success', payoutRequests: data });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+exports.getInvoices = async (req, res, next) => {
+  try {
+    const invoices = await FarmerMonthInvoice.find({
+      farmerId: req.user._id,
+      status:'Closed',
+    }).sort({ _id: -1 });
+    const data = [];
+    for (let invoice of invoices) {
+      data.push({
+        id: invoice.invoiceId,
+        month: invoice.date.month,
+        year: invoice.date.year,
+      });
+    }
+    res.status(200).json({ message: 'Success', invoices: data });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
