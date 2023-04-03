@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const Location = require('./Location');
+const BankAccount = require('./BankAccount');
 const userSchema = new Schema({
   fname: {
     type: String,
@@ -97,6 +98,14 @@ const userSchema = new Schema({
         required: true,
         default: 0,
       },
+      lastBalanceUpdate: {
+        type: Date,
+        default: null,
+      },
+      negativeBalanceSince: {
+        type: Date,
+        default: null,
+      },
       hasVehicle: {
         type: Boolean,
         required: true,
@@ -117,16 +126,25 @@ const userSchema = new Schema({
         default: 50,
       },
       saleLocation: {
-        type: [Location],
+        type:Location,
       },
-      bankAccount: new Schema(
-        {
-          Bank: { type: ObjectId, required: true },
-          AccountName: { type: String, required: true },
-          AccountNumber: { type: String, required: true },
-        },
-        { _id: false }
-      ),
+      followers:{
+        type:[ObjectId],
+        min:null
+      },
+      status: {
+        type: String,
+        required: true,
+        default: 'Quarantined',
+        enum: ['Active', 'Suspended', 'Deleted', 'Banned', 'Quarantined'],
+      },
+      finStatus: {
+        type: String,
+        required: true,
+        default: 'Active',
+        enum: ['Active', 'Suspended'],
+      },
+      bankAccount: BankAccount,
     },
     { _id: false }
   ),
@@ -137,6 +155,10 @@ const userSchema = new Schema({
       },
       locations: {
         type: [Location],
+      },
+      following:{
+        type:[ObjectId],
+        min:null
       },
       cart: [
         new Schema(
