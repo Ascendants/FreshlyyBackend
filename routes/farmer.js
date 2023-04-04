@@ -48,7 +48,7 @@ router.post('/insert-product', farmerController.insertProduct);
 router.get('/selling-product/:productId', farmerController.getSellingProduct);
 router.post(
   '/update-product/:productId',
-  farmerController.updateproductdetails
+  farmerController.updateProductDetails
 );
 
 //test route. must be removed in production
