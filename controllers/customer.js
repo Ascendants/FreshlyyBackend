@@ -1026,7 +1026,7 @@ exports.getProducts = async (req, res, next) => {
             const distanceData = await distanceResponse.json();
             // console.log(distanceData)
             distanceValue = distanceData.rows[0].elements[0].distance.text;
-            distanceNum = parseFloat(distanceValue.replace("Km", "").trim());
+            distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
             totalPrice = calculateTotalPrice(
               product.price,
@@ -1078,10 +1078,12 @@ exports.getProducts = async (req, res, next) => {
     );
     const sortedResult = cheaperProducts.concat(expensiveProducts);
 
-    res.status(200).json({message:'Success',mainPageProducts:sortedResult});
+    res
+      .status(200)
+      .json({ message: 'Success', mainPageProducts: sortedResult });
   } catch (error) {
     console.error(error);
-    res.status(500).json({message:'Unsuccessful'});
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1270,10 +1272,10 @@ exports.getSpecificOrder = async (req, res) => {
 };
 
 exports.getTickets = async (req, res, next) => {
-  try{
+  try {
     const email = req.user.email;
-    const tickets = await SupportTicket.find({userEmail: email});
-    res.status(200).json({message: "Success", tickets: tickets});
+    const tickets = await SupportTicket.find({ userEmail: email });
+    res.status(200).json({ message: 'Success', tickets: tickets });
   } catch (error) {
     console.log(error);
   }

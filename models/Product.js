@@ -77,9 +77,9 @@ const productSchema = new Schema({
     required: true,
     min: 0,
   },
-  likes:{
-    type:[String],
-    min:null
+  likes: {
+    type: [String],
+    min: null,
   },
 });
 module.exports = mongoose.model('Product', productSchema);
