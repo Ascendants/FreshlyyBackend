@@ -84,7 +84,7 @@ exports.getSellingProduct = async (req, res) => {
   try {
     console.log('hii');
     // console.log(req.productId);
-    const productId = '63f4d385b1a06dad48ec25ba';
+    const productId = req.params.productId;
     const product = await Product.findById(productId);
     console.log(product);
     res.status(200).json({ message: 'Success', product: product });
@@ -277,13 +277,11 @@ exports.verifyCouponCode = async (req, res, next) => {
     const coupon = await Coupon.find({ cCode: cCode });
     // console.log(coupon);
     if (coupon.length > 0) {
-      res
-        .status(200)
-        .json({
-          message: 'Code is already in the database',
-          cCode: cCode,
-          isExist: true,
-        });
+      res.status(200).json({
+        message: 'Code is already in the database',
+        cCode: cCode,
+        isExist: true,
+      });
     } else {
       res
         .status(200)

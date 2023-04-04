@@ -33,13 +33,23 @@ router.post(
 
 //make this admin routes
 router.get('/support-tickets', farmerController.getSupportTickets);
-router.get('/support-ticket/:id', farmerController.getSupportTicket); 
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
 router.put('/update-support-ticket/:id', farmerController.updateSupportTicket);
-router.delete('/delete-support-ticket/:id', farmerController.deleteSupportTicket);
+router.delete(
+  '/delete-support-ticket/:id',
+  farmerController.deleteSupportTicket
+);
 router.post('/support-ticket', farmerController.supportTicket);
 
-router.post('/create-coupon',farmerController.createCoupon);
-router.post('/verify-coupon-code',farmerController.verifyCouponCode);
+router.post('/create-coupon', farmerController.createCoupon);
+router.post('/verify-coupon-code', farmerController.verifyCouponCode);
+
+router.post('/insert-product', farmerController.insertProduct);
+router.get('/selling-product/:productId', farmerController.getSellingProduct);
+router.post(
+  '/update-product/:productId',
+  farmerController.updateproductdetails
+);
 
 //test route. must be removed in production
 // router.post('/add-bank', farmerController.postCreateBank);
