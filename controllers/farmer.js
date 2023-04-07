@@ -124,7 +124,7 @@ async function updateProduct(productId, updatedFields) {
   }
 }
 
-exports.updateproductdetails = async (req, res, next) => {
+exports.updateProductDetails = async (req, res, next) => {
   const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
   // console.log(req.body);
   console.log(req.params.productId);
@@ -462,7 +462,9 @@ exports.changeFarmerFinStatus = async (
 
 exports.getPayoutRequests = async (req, res, next) => {
   try {
-    const payoutRequests = await PayoutRequest.find({ farmerId: req.user._id });
+    const payoutRequests = await PayoutRequest.find({
+      farmerId: req.user._id,
+    }).sort({ _id: -1 });
     const data = [];
     for (request of payoutRequests) {
       const bank = (await Bank.findById(request.account.Bank)).BankName;
