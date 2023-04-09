@@ -1,10 +1,15 @@
 const express = require('express');
 
 const customerController = require('../controllers/customer');
+const authController = require('../controllers/auth');
 
 const router = express.Router();
 
 const { body } = require('express-validator');
+
+router.use('*',authController.checkCommonAuth);
+
+router.post('/signup',customerController.signUp);
 
 router.post('/place-order/', customerController.postOrder);
 

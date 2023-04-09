@@ -1,6 +1,9 @@
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { ObjectId } = require('mongodb');
+const admin=require('../firebase/firebase');
+const { json } = require('body-parser');
+
 
 exports.getProduct = async (req, res, next) => {
   const purl = req.params.purl;
@@ -76,3 +79,4 @@ exports.getHello = (req, res, next) => {
   console.log('hello');
   return res.status(200).json({ message: 'Hello There' });
 };
+
