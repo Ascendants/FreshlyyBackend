@@ -46,6 +46,14 @@ app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
 
+app.use('/test-notification', async (req, res, next) => {
+  const {
+    sendOrderConfirmedPushNotification,
+  } = require('./controllers/notifications');
+  await sendOrderConfirmedPushNotification(req.user, req.user, 10000);
+  res.status(200).json({ message: 'Success' });
+});
+
 app.use(errorController.get404);
 
 mongoose.set('strictQuery', true);

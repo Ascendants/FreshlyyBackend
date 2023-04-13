@@ -114,7 +114,7 @@ async function clearFundsForOrder(session, date, report) {
       continue;
     }
     appendToReport(report, 'Order #' + order._id + ' is being processed');
-
+    let totalPayment = 0;
     let balanceToUpdate = 0;
     let cashOnDelivery = 0;
 
@@ -125,13 +125,16 @@ async function clearFundsForOrder(session, date, report) {
 
       if (payment.type == 'COD') {
         balanceToUpdate += order.commission * -1;
-        cashOnDelivery = payment.amount;
+        totalPayment = payment.amount;
+        cashOnDelivery += payment.amount;
         break;
       } else if (payment.type == 'Card') {
         balanceToUpdate +=
           order.totalPrice + order.totalDeliveryCharge - order.commission;
+        totalPayment += payment.amount;
         break;
       }
+
       // else if(payment.type=='Coupon') // coupon management
     }
     try {
@@ -141,6 +144,20 @@ async function clearFundsForOrder(session, date, report) {
           'orderUpdate.closed': date,
         }).session(session);
         appendToReport(report, 'Marked Order #' + order._id + ' as closed');
+
+        //updating loyalty points of customer
+        await User.findByIdAndUpdate(order.customer, {
+          $inc: { 'customer.loyaltyPoints': Math.floor(totalPayment / 100) },
+        }).session(session);
+        appendToReport(
+          report,
+          'Added ' +
+            Math.floor(totalPayment / 100) +
+            ' Loyalty points to customer ' +
+            order.customer +
+            ' for order #' +
+            order._id
+        );
 
         const farmerInvoiceId = `${order.farmer}-${(orderDate.getMonth() + 1)
           .toString()

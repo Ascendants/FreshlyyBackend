@@ -8,6 +8,7 @@ const moment = require('moment');
 const { ObjectId } = require('mongodb');
 const cron = require('node-cron');
 const SupportTicket = require('../models/SupportTicket');
+const { sendOrderConfirmedNotifs } = require('./notifications');
 
 const cancelOrder = async (orderId) => {
   if (!orderId) {
@@ -79,87 +80,108 @@ const cancelOrder = async (orderId) => {
 };
 exports.cancelOrder = cancelOrder;
 exports.getDashboard = async (req, res, next) => {
-  const user = {
-    fname: req.user.fname,
-    lname: req.user.lname,
-    email: req.user.email,
-    profilePicUrl: req.user.profilePicUrl,
-  };
-  const toPay = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.payment': null,
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.failed': { $eq: null },
-  });
-  const toProcess = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': null,
-  });
-  const toShip = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.shipped': null,
-    isDelivery: true,
-  });
-  const toReceive = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.shipped': { $ne: null },
-    'orderUpdate.delivered': null,
-  });
-  const toPickup = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.pickedUp': null,
-    isDelivery: false,
-  });
-  const toReview = await Order.countDocuments({
-    $or: [
-      {
-        customer: req.user._id,
-        farmerRating: -1,
-        deliveryRating: -1,
-        'orderUpdate.delivered': { $ne: null },
-        'orderUpdate.failed': { $eq: null },
-        'orderUpdate.cancelled': { $eq: null },
-      },
-      {
-        customer: req.user._id,
-        farmerRating: -1,
-        'orderUpdate.pickedUp': { $ne: null },
-        'orderUpdate.failed': { $eq: null },
-        'orderUpdate.cancelled': { $eq: null },
-      },
-    ],
-  });
-  const all = await Order.countDocuments({
-    customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-  });
-  res.status(200).json({
-    message: 'Success',
-    user: user,
-    toPay: toPay,
-    toProcess: toProcess,
-    toShip: toShip,
-    toReceive: toReceive,
-    toPickup: toPickup,
-    all: all,
-    toReview: toReview,
-  });
+  try {
+    const user = {
+      fname: req.user.fname,
+      lname: req.user.lname,
+      email: req.user.email,
+      profilePicUrl: req.user.profilePicUrl,
+      loyaltyPoints: req.user.customer.loyaltyPoints,
+    };
+    const toPay = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.payment': null,
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.failed': { $eq: null },
+    });
+    const toProcess = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': null,
+    });
+    const toShip = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.shipped': null,
+      isDelivery: true,
+    });
+    const toReceive = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.shipped': { $ne: null },
+      'orderUpdate.delivered': null,
+    });
+    const toPickup = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.pickedUp': null,
+      isDelivery: false,
+    });
+    const toReview = await Order.countDocuments({
+      $or: [
+        {
+          customer: req.user._id,
+          farmerRating: -1,
+          deliveryRating: -1,
+          'orderUpdate.delivered': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
+        },
+        {
+          customer: req.user._id,
+          farmerRating: -1,
+          'orderUpdate.pickedUp': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
+        },
+      ],
+    });
+    const all = await Order.countDocuments({
+      customer: req.user._id,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+    });
+    let loyaltyScheme = 'None';
+    for (scheme of req.config.loyaltyScheme) {
+      if (
+        scheme.minPoints <= user.loyaltyPoints &&
+        user.loyaltyPoints <= scheme.maxPoints
+      ) {
+        loyaltyScheme = scheme;
+        break;
+      }
+    }
+    if (loyaltyScheme !== 'None') {
+      user.loyaltyMin = loyaltyScheme.minPoints;
+      user.loyaltyMax = loyaltyScheme.maxPoints;
+      user.loyaltyMembership = loyaltyScheme.name;
+    }
+    res.status(200).json({
+      message: 'Success',
+      user: user,
+      toPay: toPay,
+      toProcess: toProcess,
+      toShip: toShip,
+      toReceive: toReceive,
+      toPickup: toPickup,
+      all: all,
+      toReview: toReview,
+    });
+  } catch (error) {
+    logger(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 };
 
 exports.postOrder = async (req, res, next) => {
@@ -235,6 +257,7 @@ exports.postOrder = async (req, res, next) => {
       await order.save({ session });
       orders.push(order);
     }
+
     //remember to clear the cart in production
     session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
@@ -296,12 +319,20 @@ exports.postPayment = async (req, res, next) => {
       if (order.orderUpdate.payment != null) {
         return res.status(403).json({ message: 'Already Paid' });
       }
+      if (order.orderUpdate.cancelled != null) {
+        return res.status(403).json({ message: 'Order has been cancelled' });
+      }
+      if (order.orderUpdate.failed != null) {
+        return res.status(403).json({ message: 'Order has failed' });
+      }
       let total = order.totalPrice + order.totalDeliveryCharge;
       let totalPaid = 0;
-      for (pay in order.payment) {
+      for (pay of order.payment) {
         if (pay.status == 'Success') totalPaid += pay.amount;
       }
       const totalToPay = total - totalPaid; //get outstanding balance to be paid
+      if (totalToPay <= 0)
+        return res.status(403).json({ message: 'Order already paid' });
       if (payFrom == 'cod') {
         order.payment.push({
           type: 'COD',
@@ -327,10 +358,23 @@ exports.postPayment = async (req, res, next) => {
       }
       await order.save({ session });
     }
-    if (!saveCard) {
+    if (!saveCard && payFrom != 'cod') {
       await stripe.paymentMethods.detach(payFrom);
     }
-    session.commitTransaction(); //change this to commit
+    for (let orderId of orders) {
+      const order = (await Order.findById(orderId)).toObject();
+      if (!order) return;
+      for (let i in order.items) {
+        const item = await Product.findById(order.items[i].itemId);
+        order.items[i]['title'] = item.title;
+        order.items[i]['imageUrl'] = item.imageUrls[0].imageUrl;
+        order.items[i]['price'] = order.items[i].qty * order.items[i].uPrice;
+      }
+      const customer = await User.findById(order.customer);
+      const farmer = await User.findById(order.farmer);
+      sendOrderConfirmedNotifs(farmer, customer, order);
+    }
+    await session.commitTransaction();
     res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
@@ -408,9 +452,9 @@ exports.getCreateStripeAccount = async (req, res, next) => {
 
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
-  const cart = req.user.customer.cart.toObject();
+  const cart = req.user?.customer?.cart.toObject();
   if (!cart) {
-    res.status(200).json({ message: 'Success', cart: null });
+    return res.status(404).json({ message: 'Fail', cart: null });
   }
   try {
     for (let farmerItem of cart) {

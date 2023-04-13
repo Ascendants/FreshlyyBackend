@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const Location = require('./Location');
+const Notification = require('./Notification');
 const BankAccount = require('./BankAccount');
 const userSchema = new Schema({
   fname: {
@@ -145,6 +146,9 @@ const userSchema = new Schema({
         enum: ['Active', 'Suspended'],
       },
       bankAccount: BankAccount,
+      notifications: {
+        type: [Notification],
+      },
     },
     { _id: false }
   ),
@@ -159,6 +163,14 @@ const userSchema = new Schema({
       following: {
         type: [ObjectId],
         min: null,
+      },
+      loyaltyPoints: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      coupons: {
+        type: [ObjectId],
       },
       cart: [
         new Schema(
@@ -201,6 +213,9 @@ const userSchema = new Schema({
           { _id: false }
         ),
       ],
+      notifications: {
+        type: [Notification],
+      },
     },
     { _id: false }
   ),
@@ -209,6 +224,11 @@ const userSchema = new Schema({
     required: true,
     default: 'Customer',
     enum: ['Customer', 'Farmer', 'Admin', 'SAdmin'],
+  },
+  pushToken: {
+    type: String,
+    required: true,
+    default: 'null',
   },
   dateAdded: {
     type: Date,
