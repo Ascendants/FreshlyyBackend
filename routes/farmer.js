@@ -54,4 +54,6 @@ router.post(
 //test route. must be removed in production
 // router.post('/add-bank', farmerController.postCreateBank);
 
+router.get('/notifications', farmerController.getNotifications);
+
 module.exports = router;

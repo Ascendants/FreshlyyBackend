@@ -2,7 +2,6 @@ const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const Location = require('./Location');
-const Notification = require('./Notification');
 const BankAccount = require('./BankAccount');
 const userSchema = new Schema({
   fname: {
@@ -146,9 +145,6 @@ const userSchema = new Schema({
         enum: ['Active', 'Suspended'],
       },
       bankAccount: BankAccount,
-      notifications: {
-        type: [Notification],
-      },
     },
     { _id: false }
   ),
@@ -213,9 +209,6 @@ const userSchema = new Schema({
           { _id: false }
         ),
       ],
-      notifications: {
-        type: [Notification],
-      },
     },
     { _id: false }
   ),

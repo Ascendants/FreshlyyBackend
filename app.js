@@ -24,6 +24,7 @@ const farmerRoutes = require('./routes/farmer');
 const errorController = require('./controllers/error');
 const taskController = require('./controllers/tasks');
 const Product = require('./models/Product');
+const Order = require('./models/Order');
 
 //put your routes here
 app.use('/', async (req, res, next) => {
@@ -47,10 +48,16 @@ app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
 
 app.use('/test-notification', async (req, res, next) => {
-  const {
-    sendOrderConfirmedPushNotification,
-  } = require('./controllers/notifications');
-  await sendOrderConfirmedPushNotification(req.user, req.user, 10000);
+  const { sendPushNotification } = require('./controllers/notifications');
+  await sendPushNotification(
+    req.user,
+    {
+      title: 'Test Notification',
+      body: 'This is a test notification used to test.',
+    },
+    true
+  );
+  // await Order.updateMany({}, { customer: req.user._id });
   res.status(200).json({ message: 'Success' });
 });
 

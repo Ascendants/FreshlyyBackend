@@ -53,4 +53,6 @@ router.get('/get-orders/:type', customerController.getOrders);
 
 router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
 
+router.get('/notifications', customerController.getNotifications);
+
 module.exports = router;

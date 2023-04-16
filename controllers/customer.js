@@ -8,7 +8,12 @@ const moment = require('moment');
 const { ObjectId } = require('mongodb');
 const cron = require('node-cron');
 const SupportTicket = require('../models/SupportTicket');
-const { sendOrderConfirmedNotifs } = require('./notifications');
+const Notification = require('../models/Notification');
+const {
+  sendOrderConfirmedNotifs,
+  sendOrderCancelledNotifs,
+  sendOrderPickedUpNotifs,
+} = require('./notifications');
 
 const cancelOrder = async (orderId) => {
   if (!orderId) {
@@ -60,7 +65,7 @@ const cancelOrder = async (orderId) => {
             payment_intent: order.payment[i].payRef,
           });
         } catch (error) {
-          logger(error);
+          logger(error.message);
         }
         if (refund?.status == 'succeeded') {
           order.payment[i].status = 'Refunded';
@@ -71,10 +76,20 @@ const cancelOrder = async (orderId) => {
     }
     order.orderUpdate.cancelled = Date.now();
     await order.save({ session: session });
+    const customer = await User.findById(order.customer);
+    const farmer = await User.findById(order.farmer);
+    let reason = 'customer';
+    if (order.orderUpdate.payment == null) {
+      reason = 'payment';
+    }
+    await sendOrderCancelledNotifs(farmer, customer, order, reason);
     await session.commitTransaction();
+    await session.endSession();
     return { status: 200, message: 'Success' };
   } catch (error) {
     await session.abortTransaction();
+    await session.endSession();
+    console.log(error);
     return { status: 500, message: error.message };
   }
 };
@@ -167,6 +182,12 @@ exports.getDashboard = async (req, res, next) => {
       user.loyaltyMax = loyaltyScheme.maxPoints;
       user.loyaltyMembership = loyaltyScheme.name;
     }
+    const notifications = await Notification.countDocuments({
+      user: req.user._id,
+      read: null,
+      customer: true,
+    });
+    user.notifications = notifications ? true : false;
     res.status(200).json({
       message: 'Success',
       user: user,
@@ -285,7 +306,10 @@ exports.postPickupOrder = async (req, res, next) => {
       return res.status(403).json({ message: 'This order will be delivered' });
     }
     order.orderUpdate.pickedUp = Date.now();
-    order.save();
+    await order.save();
+    const customer = await User.findById(order.customer);
+    const farmer = await User.findById(order.farmer);
+    await sendOrderPickedUpNotifs(farmer, customer, order);
     return res.status(200).json({ message: 'Success' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -1094,5 +1118,32 @@ exports.getTickets = async (req, res, next) => {
     res.status(200).json({ message: 'Success', tickets: tickets });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.getNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.find({
+      user: req.user._id,
+      customer: true,
+    }).sort({ _id: -1 });
+    const data = [];
+    for (let notification of notifications) {
+      data.push({
+        id: notification._id,
+        title: notification.title,
+        body: notification.body,
+        created: moment(notification.update.created).format('DD-MM-YYYY'),
+        read: notification.read,
+      });
+      if (notification.read == null) {
+        notification.read = Date.now();
+      }
+      notification.save();
+    }
+    res.status(200).json({ message: 'Success', notifications: data });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };

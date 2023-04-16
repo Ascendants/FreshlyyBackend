@@ -9,6 +9,7 @@ const Coupon = require('../models/Coupon');
 const { logger } = require('../util/logger');
 const PayoutRequest = require('../models/PayoutRequest');
 const mongoose = require('mongoose');
+const Notification = require('../models/Notification');
 
 const { validationResult } = require('express-validator');
 const FarmerMonthInvoice = require('../models/FarmerMonthInvoice');
@@ -517,5 +518,31 @@ exports.getInvoices = async (req, res, next) => {
   } catch (err) {
     logger(err);
     res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.getNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.updateMany(
+      {
+        user: req.user._id,
+        customer: false,
+      },
+      { read: Date.now() }
+    ).sort({ _id: -1 });
+    const data = [];
+    for (let notification of notifications) {
+      data.push({
+        id: notification._id,
+        title: notification.title,
+        body: notification.body,
+        created: moment(notification.update.created).format('DD-MM-YYYY'),
+        read: notification.read,
+      });
+    }
+    return res.status(200).json({ message: 'Success', notifications: data });
+  } catch (err) {
+    logger(err);
+    return res.status(500).json({ message: 'Something went wrong' });
   }
 };

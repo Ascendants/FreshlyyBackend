@@ -1,16 +1,32 @@
 const mongoose = require('mongoose');
-const notificationSchema = mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: true,
-    },
-    body: {
-      type: Number,
-      required: true,
-    },
-    sessionActivity: { type: Date, expires: '3600s', default: Date.now },
+const { ObjectId } = require('mongodb');
+const notificationSchema = mongoose.Schema({
+  user: {
+    type: ObjectId,
+    required: true,
   },
-  { _id: false }
-);
-module.exports = notificationSchema;
+  customer: {
+    type: Boolean,
+    required: true,
+    default: true,
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  body: {
+    type: String,
+    required: true,
+  },
+  created: {
+    type: Date,
+    default: Date.now,
+    required: true,
+  },
+  read: {
+    type: Date,
+    default: null,
+  },
+});
+notificationSchema.index({ read: 1 }, { expireAfterSeconds: 1296000 });
+module.exports = mongoose.model('Notification', notificationSchema);

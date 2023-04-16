@@ -9,7 +9,7 @@ const customerController = require('../controllers/customer');
 const farmerController = require('../controllers/farmer');
 const DailyTaskReport = require('../models/DailyTaskReport');
 
-exports.cancelOrdersNotPaid = async () => {
+exports.cancelOrdersNotPaid = async (report) => {
   const orders = await Order.find({
     'orderUpdate.failed': { $eq: null },
     'orderUpdate.payment': { $eq: null },
@@ -21,6 +21,7 @@ exports.cancelOrdersNotPaid = async () => {
     const hoursAfterPlaced = (Date.now() - order.orderUpdate.placed) / 36e5;
     if (hoursAfterPlaced > 12) {
       await customerController.cancelOrder(order._id);
+      appendToReport(report, `Cancelled order ${order._id}`);
     }
   }
 };
@@ -65,7 +66,13 @@ exports.runDailyTasks = async () => {
     await closeInvoicesAtMonthEnd(session, date, report);
     appendToReport(report, 'Done Clearing Invoices');
     appendToReport(report);
-
+    await session.endSession();
+    appendToReport(report, 'Cancelling unpaid orders');
+    appendToReport(report);
+    await this.cancelOrdersNotPaid(report);
+    appendToReport(report, 'Done Cancelling unpaid orders');
+    appendToReport(report);
+    appendToReport(report, 'Done Running Daily Tasks');
     report.save();
   } catch (err) {
     console.log(err);
