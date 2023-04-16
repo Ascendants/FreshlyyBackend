@@ -173,6 +173,39 @@ const sendOrderPickedUpEmail = async (farmer, customer, order) => {
   }
 };
 
+const sendLoyaltyLevelUpPushNotification = async (customer, loyaltyLevel) => {
+  try {
+    const { sendPushNotification } = require('./notifications');
+    const customerNotification = {
+      title: 'You reached a new loyalty level 🎉!',
+      body: `Hooray 🎉, you have reached ${loyaltyLevel.name} loyalty level! Check your coupons to see what you can get!`,
+    };
+    await sendPushNotification(customer, customerNotification, true);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const sendLoyaltyLevelUpEmail = async (customer, loyaltyLevel) => {
+  try {
+    const params = {
+      customer: customer.fname,
+      loyaltyLevel: loyaltyLevel.name,
+      loyaltyBadge: loyaltyLevel.badge,
+    };
+    customerEmail = {
+      to: [
+        { email: customer.email, name: customer.fname + ' ' + customer.lname },
+      ],
+      templateId: 8,
+      params,
+    };
+    await apiInstance.sendTransacEmail(customerEmail);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 exports.sendOrderConfirmedNotifs = async (farmer, customer, order) => {
   await sendOrderConfirmedPushNotification(farmer, customer, order.totalPrice);
   await sendOrderConfirmedEmail(farmer, customer, order);
@@ -195,4 +228,9 @@ exports.sendOrderCancelledNotifs = async (
 exports.sendOrderPickedUpNotifs = async (farmer, customer, order) => {
   await sendOrderPickedUpPushNotification(farmer, customer);
   await sendOrderPickedUpEmail(farmer, customer, order);
+};
+
+exports.sendLoyaltyLevelUpNotifs = async (customer, loyaltyLevel) => {
+  await sendLoyaltyLevelUpPushNotification(customer, loyaltyLevel);
+  await sendLoyaltyLevelUpEmail(customer, loyaltyLevel);
 };

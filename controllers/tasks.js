@@ -8,6 +8,8 @@ const mongoose = require('mongoose');
 const customerController = require('../controllers/customer');
 const farmerController = require('../controllers/farmer');
 const DailyTaskReport = require('../models/DailyTaskReport');
+const Config = require('../models/Config');
+const { sendLoyaltyLevelUpNotifs } = require('./notifications');
 
 exports.cancelOrdersNotPaid = async (report) => {
   const orders = await Order.find({
@@ -153,9 +155,36 @@ async function clearFundsForOrder(session, date, report) {
         appendToReport(report, 'Marked Order #' + order._id + ' as closed');
 
         //updating loyalty points of customer
+        const user = await User.findById(order.customer).session(session);
+        const loyaltyScheme = (await Config.findOne({})).loyaltyScheme;
+        let existingLoyaltyLevel;
+        for (let loyaltyLevel of loyaltyScheme) {
+          if (
+            loyaltyLevel.minPoints <= user.customer.loyaltyPoints &&
+            loyaltyLevel.maxPoints >= user.customer.loyaltyPoints
+          ) {
+            existingLoyaltyLevel = loyaltyLevel;
+            break;
+          }
+        }
+        const newLoyaltyPoints =
+          user.customer.loyaltyPoints + Math.floor(totalPayment / 100);
+        let newLoyaltyLevel;
+        for (let loyaltyLevel of loyaltyScheme) {
+          if (
+            loyaltyLevel.minPoints <= newLoyaltyPoints &&
+            loyaltyLevel.maxPoints >= newLoyaltyPoints
+          ) {
+            newLoyaltyLevel = loyaltyLevel;
+            break;
+          }
+        }
         await User.findByIdAndUpdate(order.customer, {
           $inc: { 'customer.loyaltyPoints': Math.floor(totalPayment / 100) },
         }).session(session);
+        if (newLoyaltyLevel.name != existingLoyaltyLevel.name) {
+          sendLoyaltyLevelUpNotifs(user, newLoyaltyLevel);
+        }
         appendToReport(
           report,
           'Added ' +
