@@ -181,6 +181,10 @@ exports.getDashboard = async (req, res, next) => {
       user.loyaltyMin = loyaltyScheme.minPoints;
       user.loyaltyMax = loyaltyScheme.maxPoints;
       user.loyaltyMembership = loyaltyScheme.name;
+    } else {
+      user.loyaltyMin = 0;
+      user.loyaltyMax = req.config.loyaltyScheme[0].minPoints;
+      user.loyaltyMembership = 'None';
     }
     const notifications = await Notification.countDocuments({
       user: req.user._id,

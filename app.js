@@ -17,7 +17,6 @@ app.options('*', cors());
 app.use(bodyParser.json({ type: 'application/json' }));
 const User = require('./models/User');
 const Config = require('./models/Config');
-
 const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
 const farmerRoutes = require('./routes/farmer');
