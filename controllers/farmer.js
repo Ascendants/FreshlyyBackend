@@ -523,13 +523,10 @@ exports.getInvoices = async (req, res, next) => {
 
 exports.getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.updateMany(
-      {
-        user: req.user._id,
-        customer: false,
-      },
-      { read: Date.now() }
-    ).sort({ _id: -1 });
+    const notifications = await Notification.find({
+      user: req.user._id,
+      customer: false,
+    }).sort({ _id: -1 });
     const data = [];
     for (let notification of notifications) {
       data.push({
@@ -539,10 +536,14 @@ exports.getNotifications = async (req, res, next) => {
         created: moment(notification.update.created).format('DD-MM-YYYY'),
         read: notification.read,
       });
+      if (notification.read == null) {
+        notification.read = Date.now();
+      }
+      notification.save();
     }
-    return res.status(200).json({ message: 'Success', notifications: data });
+    res.status(200).json({ message: 'Success', notifications: data });
   } catch (err) {
     logger(err);
-    return res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
