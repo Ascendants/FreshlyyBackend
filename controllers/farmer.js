@@ -547,3 +547,47 @@ exports.getNotifications = async (req, res, next) => {
     res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
+exports.getInvoice = async (req, res, next) => {
+  try {
+    const invoice = await FarmerMonthInvoice.findOne({
+      invoiceId: req.params.invoiceId,
+      status: 'Closed',
+    }).sort({ _id: -1 });
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+    const invoiceData = {
+      invoiceId: invoice.invoiceId,
+      farmerAddress: invoice.farmerAddress,
+      farmerName: invoice.farmerName,
+      farmerEmail: invoice.farmerEmail,
+      cashInHand: invoice.cashInHand || 0,
+      commissionAmount: invoice.commissionAmount || 0,
+      farmerId: invoice.farmerId,
+      totalEarnings: invoice.totalEarnings || 0,
+      couponCharges: invoice.couponCharges || 0,
+      date: moment(
+        invoice.date.month + 1 + '/' + invoice.date.year,
+        'MM/YYYY'
+      ).format('MMMM YYYY'),
+      orders: [],
+    };
+    for (let orderId of invoice.orders) {
+      const order = await Order.findById(orderId);
+      invoiceData.orders.push({
+        id: order._id,
+        date: moment(order.orderUpdate.placed).format('DD-MM-YYYY'),
+        nItems: order.items.length,
+        subTotal: order.totalPrice,
+        deliveryCharge: order.totalDeliveryCharge,
+        total: order.totalPrice + order.totalDeliveryCharge,
+        commission: order.commission,
+      });
+    }
+    res.status(200).json({ message: 'Success', invoice: invoiceData });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
