@@ -55,6 +55,10 @@ router.post(
 // router.post('/add-bank', farmerController.postCreateBank);
 
 router.get('/notifications', farmerController.getNotifications);
+
 router.get('/invoice/:invoiceId', farmerController.getInvoice);
 
+router.post('/settlement-intent/', farmerController.postSettlementIntent);
+
+router.post('/settle-account/', farmerController.postSettleAccount);
 module.exports = router;

@@ -10,6 +10,7 @@ const { logger } = require('../util/logger');
 const PayoutRequest = require('../models/PayoutRequest');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const FarmerPayment = require('../models/FarmerPayment');
 
 const { validationResult } = require('express-validator');
 const FarmerMonthInvoice = require('../models/FarmerMonthInvoice');
@@ -589,5 +590,98 @@ exports.getInvoice = async (req, res, next) => {
   } catch (err) {
     logger(err);
     res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.postSettlementIntent = async (req, res, next) => {
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: req.user.stripeId,
+      type: 'card',
+    });
+    const cards = [];
+    paymentMethods.data.forEach((method) => {
+      const brand =
+        method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1);
+      let cardNo = '**** **** **** ' + method.card.last4;
+      if (brand == 'Amex') {
+        cardNo = '**** ****** *' + method.card.last4;
+      }
+      cards.push({
+        cardId: method.id,
+        cardName: brand + ' ' + method.card.last4,
+        cardNo: cardNo,
+        cardType: brand,
+        cardExp: method.card.exp_month + '/' + (method.card.exp_year % 2000),
+      });
+    });
+    const farmerPayment = new FarmerPayment({
+      farmerId: req.user._id,
+      amount: req.user.farmer.withdrawable * -1,
+      farmerName: req.user.fname + ' ' + req.user.lname,
+      farmerEmail: req.user.email,
+      farmerAddress: req.user.bAddress,
+    });
+    await farmerPayment.save();
+    res.status(200).json({
+      message: 'Success',
+      settlementIntent: {
+        id: farmerPayment._id,
+        amount: farmerPayment.amount,
+      },
+      cards: cards,
+    });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.postSettleAccount = async (req, res, next) => {
+  const payFrom = req.body.payFrom;
+  const saveCard = req.body.saveCard;
+  const farmerPaymentId = req.body.farmerPayment;
+  const session = await mongoose.startSession();
+  if (!payFrom || !farmerPaymentId) {
+    res.status(400).json({ message: 'Bad Request' });
+    return;
+  }
+
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
+    const farmerPayment = await FarmerPayment.findOne({
+      _id: farmerPaymentId,
+      status: 'Pending',
+      paymentDate: null,
+    }).session(session);
+    if (!farmerPayment) {
+      throw new Error('Invalid farmer payment');
+    }
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: farmerPayment.amount * 100,
+      currency: 'lkr',
+      customer: req.user.stripeId,
+      confirm: true,
+      payment_method: payFrom,
+    });
+    farmerPayment.paymentDate = Date.now();
+    farmerPayment.status = 'Success';
+    farmerPayment.payRef = paymentIntent.id;
+
+    await farmerPayment.save({ session });
+    if (!saveCard) {
+      await stripe.paymentMethods.detach(payFrom);
+    }
+    req.user.farmer.withdrawable += farmerPayment.amount;
+    await req.user.save({ session });
+    await session.commitTransaction();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
   }
 };

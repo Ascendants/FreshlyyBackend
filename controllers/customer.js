@@ -216,6 +216,7 @@ exports.postOrder = async (req, res, next) => {
     res.status(400).json({ message: 'Bad Request' });
     return;
   }
+  console.log(deliveryCharges);
   try {
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
     const cart = req.user.customer.cart; // retrieve cart from customer document

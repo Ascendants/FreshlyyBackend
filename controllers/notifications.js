@@ -91,7 +91,7 @@ const sendOrderCancelledPushNotification = async (farmer, customer, reason) => {
     if (reason == 'payment') {
       const customerNotification = {
         title: 'Order Cancelled',
-        body: `Your order from ${farmer.fname} was cancelled due to delayed payment 😬`,
+        body: `Your order from ${farmer.fname} was cancelled due to no payment 😬`,
       };
       await sendPushNotification(customer, customerNotification, true);
       return;

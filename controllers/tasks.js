@@ -74,6 +74,11 @@ exports.runDailyTasks = async () => {
     await this.cancelOrdersNotPaid(report);
     appendToReport(report, 'Done Cancelling unpaid orders');
     appendToReport(report);
+    // appendToReport(report, 'Cancelling unpaid settlements');
+    // appendToReport(report);
+    // await this.cancelSettlementsNotSettled(report);
+    // appendToReport(report, 'Done Cancelling unpaid settlements');
+    // appendToReport(report);
     appendToReport(report, 'Done Running Daily Tasks');
     report.save();
   } catch (err) {
