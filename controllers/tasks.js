@@ -7,6 +7,7 @@ const CompanyMonthInvoice = require('../models/CompanyMonthInvoice');
 const mongoose = require('mongoose');
 const customerController = require('../controllers/customer');
 const farmerController = require('../controllers/farmer');
+const DailyTaskReport = require('../models/DailyTaskReport');
 
 exports.cancelOrdersNotPaid = async () => {
   const orders = await Order.find({
@@ -30,16 +31,48 @@ function getPreviousMonth(date) {
 
   return `${month}-${year}`;
 }
-
+function appendToReport(
+  report,
+  message = '======================================================'
+) {
+  report.report +=
+    new Date().toLocaleString(undefined, { timeZone: 'Asia/Colombo' }) +
+    ' ' +
+    message +
+    '\n';
+}
 exports.runDailyTasks = async () => {
   const session = await mongoose.startSession();
-  const date = new Date();
-  await clearFundsForOrder(session, date);
-  await suspendFarmersWhoHaventPaid(session, date);
-  await closeInvoicesAtMonthEnd(session, date);
+  try {
+    const report = new DailyTaskReport({ report: '' });
+    const date = new Date();
+    appendToReport(report, 'Start Clearning Funds for Orders');
+    appendToReport(report);
+    await clearFundsForOrder(session, date, report);
+    appendToReport(report, 'Done Clearing Funds for Orders');
+    appendToReport(report);
+
+    appendToReport(report, 'Start Suspending Farmers who havent paid');
+    appendToReport(report);
+
+    await suspendFarmersWhoHaventPaid(session, date, report);
+    appendToReport(report, 'Done Suspending Farmers who havent paid');
+    appendToReport(report);
+
+    appendToReport(report, 'Start Clearing Invoices');
+    appendToReport(report);
+
+    await closeInvoicesAtMonthEnd(session, date, report);
+    appendToReport(report, 'Done Clearing Invoices');
+    appendToReport(report);
+
+    report.save();
+  } catch (err) {
+    console.log(err);
+  }
 };
 
-async function clearFundsForOrder(session, date) {
+async function clearFundsForOrder(session, date, report) {
   let orders;
   try {
     //fetch orders that has been completed
@@ -67,7 +100,7 @@ async function clearFundsForOrder(session, date) {
   if (!orders) {
     return;
   }
-
+  appendToReport(report, 'Fetched ' + orders.length + ' orders');
   for (let order of orders) {
     const orderDate = new Date(order.orderUpdate.placed);
 
@@ -80,6 +113,7 @@ async function clearFundsForOrder(session, date) {
     if (hoursAfterComplete < 72) {
       continue;
     }
+    appendToReport(report, 'Order #' + order._id + ' is being processed');
 
     let balanceToUpdate = 0;
     let cashOnDelivery = 0;
@@ -106,13 +140,15 @@ async function clearFundsForOrder(session, date) {
         await Order.findByIdAndUpdate(order._id, {
           'orderUpdate.closed': date,
         }).session(session);
-        const farmerInvoiceId = `${order.farmer}-${orderDate
-          .getMonth()
+        appendToReport(report, 'Marked Order #' + order._id + ' as closed');
+
+        const farmerInvoiceId = `${order.farmer}-${(orderDate.getMonth() + 1)
           .toString()
           .padStart(2, 0)}-${orderDate.getFullYear()}`;
         const farmerUser = await User.findById(order.farmer).session(session);
 
         //updating the monthly invoice of farmer
+
         const farmerInvoice = await FarmerMonthInvoice.findOneAndUpdate(
           { invoiceId: farmerInvoiceId },
           {
@@ -133,7 +169,10 @@ async function clearFundsForOrder(session, date) {
           },
           { upsert: true, session: session }
         );
-
+        appendToReport(
+          report,
+          'Updated Farmer Invoice for order #' + order._id
+        );
         let farmerUpdates = {
           $inc: {
             'farmer.withdrawable': balanceToUpdate,
@@ -176,17 +215,28 @@ async function clearFundsForOrder(session, date) {
           session: session,
         });
         if (farmerUser.farmer.withdrawable + balanceToUpdate >= 0) {
-          await farmerController.changeFarmerFinStatus(
+          const activate = await farmerController.changeFarmerFinStatus(
             order.farmer,
             'Active',
             session
           );
+          if (activate) {
+            appendToReport(
+              report,
+              'Reactivated Farmer #' + farmerUser._id + ' financially.'
+            );
+          } else {
+            throw new Error('Could not activate farmer');
+          }
         }
+        appendToReport(
+          report,
+          'Updated Farmer #' + farmerUser._id + ' balance'
+        );
 
         //updating company invoice for the current month
 
-        const companyInvoiceId = `${orderDate
-          .getMonth()
+        const companyInvoiceId = `${(orderDate.getMonth() + 1)
           .toString()
           .padStart(2, 0)}-${orderDate.getFullYear()}`;
 
@@ -206,19 +256,25 @@ async function clearFundsForOrder(session, date) {
           { upsert: true, session: session }
         );
       });
+      appendToReport(report, 'Updated Company Invoice for order #' + order._id);
+      appendToReport(report, 'Successfully closed order #' + order._id);
     } catch (err) {
       console.log('Error: ', err);
+      appendToReport(report, 'Error with closing order #' + order._id);
     }
+    appendToReport(report);
   }
+  appendToReport(report);
 }
 
-async function suspendFarmersWhoHaventPaid(session, date) {
+async function suspendFarmersWhoHaventPaid(session, date, report) {
   const farmers = await User.find({
     accessLevel: 'Farmer',
     'farmer.finStatus': 'Active',
     'farmer.status': 'Active',
     status: 'Active',
   });
+  appendToReport(report, 'Fetched ' + farmers.length + ' farmers');
   for (let farmerUser of farmers) {
     if (!farmerUser.farmer.negativeBalanceSince) {
       continue;
@@ -227,22 +283,34 @@ async function suspendFarmersWhoHaventPaid(session, date) {
       (date - new Date(farmerUser.farmer.negativeBalanceSince)) / 36e5 / 24 +
       30;
     if (timeSinceNegativeBalance > 30) {
-      await farmerController.changeFarmerFinStatus(
+      appendToReport(report, 'Suspending Farmer ' + farmerUser._id + '...');
+      const suspend = await farmerController.changeFarmerFinStatus(
         farmerUser._id,
         'Suspended',
         session,
         true
       );
+      if (suspend) {
+        appendToReport(report, 'Suspended ' + farmerUser._id);
+      } else {
+        appendToReport(report, 'Error: Could not suspend ' + farmerUser._id);
+      }
+      appendToReport(report);
     }
   }
 }
 
-async function closeInvoicesAtMonthEnd(session, date) {
+async function closeInvoicesAtMonthEnd(session, date, report) {
   //closing invoices at the end of month
   if (date.getDate() == 5) {
+    appendToReport(
+      report,
+      'Today is the 5th of the month, closing invoices...'
+    );
     const prevMonth = getPreviousMonth(date);
     try {
       await session.withTransaction(async () => {
+        appendToReport(report, 'Closing Company Invoices for ' + prevMonth);
         await CompanyMonthInvoice.findOneAndUpdate(
           { invoiceId: prevMonth },
           {
@@ -250,6 +318,7 @@ async function closeInvoicesAtMonthEnd(session, date) {
           },
           { session: session }
         );
+        appendToReport(report, 'Closing Farmer Invoices for ' + prevMonth);
         await FarmerMonthInvoice.updateMany(
           {
             invoiceId: { $regex: `.*${prevMonth}$`, $options: 'i' },
@@ -260,7 +329,12 @@ async function closeInvoicesAtMonthEnd(session, date) {
           { session: session }
         );
       });
+      appendToReport(report, 'Successfully Closed Invoices for ' + prevMonth);
     } catch (err) {
+      appendToReport(
+        report,
+        'Error: Could not close Invoices for ' + prevMonth
+      );
       console.log(err);
     }
   }
