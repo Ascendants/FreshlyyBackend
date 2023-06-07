@@ -27,7 +27,7 @@ exports.getDashboard = async (req, res, next) => {
   // 		'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fkom.jpg?alt=media&token=49a88f0c-ab79-4d84-8ddb-ada16a2b0101',
   // };
   const orders = await Order.find({ farmer: req.user._id }); //gives all orders belonging to farmer;
-  const products = Product.find({ farmer: req.user._id });
+  const products = await Product.find({ farmer: req.user._id });
   res.status(200).json({ message: 'Success', user: req.user });
 };
 

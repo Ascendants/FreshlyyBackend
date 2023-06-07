@@ -1045,7 +1045,9 @@ exports.getSpecificOrder = async (req, res) => {
 
 exports.getTickets = async (req, res, next) => {
   try {
-    const email = req.user.email;
+    // console.log(req.user.email);
+    // const email = req.user.email;
+    const email = 'harini@freshlyy.com';
     const tickets = await SupportTicket.find({ userEmail: email });
     res.status(200).json({ message: 'Success', tickets: tickets });
   } catch (error) {
