@@ -18,6 +18,7 @@ exports.getHello = async (req, res, next) => {
   res.status(200).json({ message: 'Hello' });
 };
 
+//Geting all the farmer's dashboard data
 exports.getDashboard = async (req, res, next) => {
   // const data = {
   // 	fname: 'Nadun',
@@ -83,7 +84,7 @@ exports.getSellingProduct = async (req, res) => {
   try {
     console.log('hii');
     // console.log(req.productId);
-    const productId = '63f4d385b1a06dad48ec25ba';
+    const productId = req.params.productId;
     const product = await Product.findById(productId);
     console.log(product);
     res.status(200).json({ message: 'Success', product: product });
@@ -123,7 +124,7 @@ async function updateProduct(productId, updatedFields) {
   }
 }
 
-exports.updateproductdetails = async (req, res, next) => {
+exports.updateProductDetails = async (req, res, next) => {
   const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
   // console.log(req.body);
   console.log(req.params.productId);
@@ -166,7 +167,7 @@ exports.updateproductdetails = async (req, res, next) => {
 
 exports.supportTicket = (req, res, next) => {
   // console.log(req.body);
-  const { name, number, issue, desc } = req.body;
+  const { name, number, issue, desc, email, orderId } = req.body;
   const userEmail = req.user.email;
 
   const newSupportTicket = new SupportTicket({
@@ -175,12 +176,14 @@ exports.supportTicket = (req, res, next) => {
     number: number,
     issue: issue,
     description: desc,
+    email: email,
+    orderId: orderId,
   });
 
   newSupportTicket.save((err, ticket) => {
     if (err) {
       console.log(err);
-      res.status(500).send('Error saving data');
+      res.status(500).json({ message: 'Can not save data', error: err });
     } else {
       console.log('success');
       res.status(200).json({ message: 'Success', id: ticket._id });
@@ -189,15 +192,28 @@ exports.supportTicket = (req, res, next) => {
 };
 
 exports.getSupportTicket = async (req, res) => {
+  const ticketId = req.params.id;
+  console.log(ticketId);
   try {
-    // console.log('hii');
+    const supportTicket = await SupportTicket.findById(ticketId);
+    res.status(200).json({ message: 'Success', supportTicket: supportTicket });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ message: 'Error fetching supportTicket from database' });
+  }
+};
+
+exports.getSupportTickets = async (req, res) => {
+  try {
     const supportTickets = await SupportTicket.find({});
     res.status(200).json({ message: 'Success', supportTicket: supportTickets });
   } catch (error) {
     console.log(error);
     res
       .status(500)
-      .json({ message: 'Error fetching supportTicket from database' });
+      .json({ message: 'Error fetching supportTickets from database' });
   }
 };
 
@@ -252,6 +268,30 @@ exports.createCoupon = (req, res, next) => {
     }
   });
 };
+
+exports.verifyCouponCode = async (req, res, next) => {
+  console.log('hiii');
+  const cCode = req.body.cCode;
+  console.log(cCode);
+  try {
+    const coupon = await Coupon.find({ cCode: cCode });
+    // console.log(coupon);
+    if (coupon.length > 0) {
+      res.status(200).json({
+        message: 'Code is already in the database',
+        cCode: cCode,
+        isExist: true,
+      });
+    } else {
+      res
+        .status(200)
+        .json({ message: 'Code is unique', cCode: cCode, isExist: false });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 exports.getBanks = async (req, res, next) => {
   try {
     const banks = await Bank.find();
@@ -422,7 +462,9 @@ exports.changeFarmerFinStatus = async (
 
 exports.getPayoutRequests = async (req, res, next) => {
   try {
-    const payoutRequests = await PayoutRequest.find({ farmerId: req.user._id });
+    const payoutRequests = await PayoutRequest.find({
+      farmerId: req.user._id,
+    }).sort({ _id: -1 });
     const data = [];
     for (request of payoutRequests) {
       const bank = (await Bank.findById(request.account.Bank)).BankName;
@@ -461,7 +503,7 @@ exports.getInvoices = async (req, res, next) => {
   try {
     const invoices = await FarmerMonthInvoice.find({
       farmerId: req.user._id,
-      status:'Closed',
+      status: 'Closed',
     }).sort({ _id: -1 });
     const data = [];
     for (let invoice of invoices) {

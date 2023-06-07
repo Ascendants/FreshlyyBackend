@@ -34,6 +34,8 @@ router.get('/mainpage', customerController.getProducts);
 
 router.get('/social-corner', customerController.getSocialProducts);
 
+router.get('/get-support-tickets', customerController.getTickets);
+
 
 
 router.get('/farmerDetail',customerController.getProducts)
@@ -47,11 +49,6 @@ const cardTypes = {
 
 router.delete('/delete-card/:cardId', customerController.deleteRemoveCard);
 
-router.post(
-  '/edit-card/:cardId',
-  [body('Nickname').trim().isLength({ min: 2, max: 15 })],
-  customerController.postEditCard
-);
 router.post('/cancel-order/:orderId', customerController.postCancelOrder);
 router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
 
