@@ -26,6 +26,10 @@ router.get('/create-stripe-account', customerController.getCreateStripeAccount);
 
 router.get('/cart/', customerController.getCart);
 
+router.post('/cart/add', customerController.postCart);
+
+router.get('/wishlist/', customerController.getWishList);
+
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);

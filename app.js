@@ -34,7 +34,7 @@ app.use('/', async (req, res, next) => {
       await config.save();
     }
     req.config = config;
-    const user = req.headers.userEmail;
+    const user = req.headers.useremail;
     req.user = await User.findOne({ email: user });
     next();
   } catch (err) {

@@ -407,7 +407,6 @@ exports.getCreateStripeAccount = async (req, res, next) => {
 };
 
 exports.getCart = async (req, res, next) => {
-  //needs to be edited when adding cart management
   const cart = req.user.customer.cart.toObject();
   if (!cart) {
     res.status(200).json({ message: 'Success', cart: null });
@@ -427,6 +426,85 @@ exports.getCart = async (req, res, next) => {
       }
     }
     res.status(200).json({ message: 'Success', cart: cart });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+exports.postCart = async (req, res) => {
+  let { productId, quantity } = req.body;
+  quantity = parseFloat(quantity);
+  const product = await Product.findById(productId);
+  const cart = req.user.customer.cart;
+  
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  //Check if the product is already in the cart
+  let cartItem;
+  cart.forEach((farmer) => {
+    farmer.items.forEach((item) => {
+      if (item.item == productId) {
+        cartItem = item;
+      }
+    });
+  });
+  if (cartItem) {
+    if (quantity < product.qtyAvailable) {
+      cartItem.qty += quantity;
+      req.user.save();
+      return res.status(200).json({ message: 'Success' }); 
+    }
+    return res.status(404).json({ message: 'Quantity unavailable' });
+  }
+  let farmer = cart.find((farmer) => farmer.farmer == product.farmer);
+  if (farmer) {
+    farmer.items.push({
+      item: product._id,
+      qty: quantity,
+    });
+    req.user.save();
+    return res.status(200).json({ message: 'Success' });
+  }
+
+  cart.push({
+    farmer: product.farmer,
+    distance: 3,
+    costPerKM: 200,
+    items: [
+      {
+        item: product._id,
+        qty: quantity,
+      },
+    ],
+  });
+  console.log(req.user.customer.cart);
+  req.user.save();
+  return res.status(200).json({ message: 'Success' });
+};
+
+exports.getWishList = async (req, res, next) => {
+  const wishList = req.user.customer.wishList.toObject();
+  if (!wishList) {
+    res.status(200).json({ message: 'Success', cart: null });
+  }
+  try {
+    for (let farmerItem of wishList) {
+      const farmer = await User.findById(farmerItem.farmer);
+      farmerItem.farmerName = farmer.fname;
+      for (let wishListItem of farmerItem.items) {
+        const product = await Product.findOne({
+          _id: wishListItem.item,
+        });
+        wishListItem.imageUri = product.imageUrls[0];
+        wishListItem.title = product.title;
+        wishListItem.uPrice = product.price;
+        wishListItem.farmerName = farmer.fname;
+      }
+    }
+    res.status(200).json({ message: 'Success', wishList: wishList });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
     logger(error);
