@@ -659,11 +659,24 @@ exports.getOrders = async (req, res, next) => {
         break;
       case 'processing':
         orders = await Order.find({
-          'orderUpdate.payment': { $ne: null },
-          'orderUpdate.processed': null,
-          'orderUpdate.cancelled': null,
-          'orderUpdate.failed': null,
-          customer: req.user._id,
+          $or: [
+            {
+              'orderUpdate.payment': { $ne: null },
+              'orderUpdate.processed': null,
+              'orderUpdate.cancelled': null,
+              'orderUpdate.failed': null,
+              customer: req.user._id,
+            },
+            {
+              isDelivery: true,
+              'orderUpdate.payment': { $ne: null },
+              'orderUpdate.processed': { $ne: null },
+              'orderUpdate.shipped': null,
+              'orderUpdate.cancelled': null,
+              'orderUpdate.failed': null,
+              customer: req.user._id,
+            },
+          ],
         }).sort({ _id: -1 });
         break;
       case 'to-pickup':
