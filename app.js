@@ -46,19 +46,19 @@ app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
 
-app.use('/test-notification', async (req, res, next) => {
-  const { sendPushNotification } = require('./controllers/notifications');
-  await sendPushNotification(
-    req.user,
-    {
-      title: 'Test Notification',
-      body: 'This is a test notification used to test.',
-    },
-    true
-  );
-  // await Order.updateMany({}, { customer: req.user._id });
-  res.status(200).json({ message: 'Success' });
-});
+// app.use('/test-notification', async (req, res, next) => {
+//   const { sendPushNotification } = require('./controllers/notifications');
+//   await sendPushNotification(
+//     req.user,
+//     {
+//       title: 'Test Notification',
+//       body: 'This is a test notification used to test.',
+//     },
+//     true
+//   );
+//   // await Order.updateMany({}, { customer: req.user._id });
+//   res.status(200).json({ message: 'Success' });
+// });
 
 app.use(errorController.get404);
 
@@ -67,7 +67,7 @@ mongoose
   .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
-    taskController.runDailyTasks();
+    // taskController.runDailyTasks();
     app.listen(process.env.PORT);
   })
   .catch((err) => console.log(err));
