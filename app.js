@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -27,6 +28,7 @@ const Product = require('./models/Product');
 
 //put your routes here
 app.use('/', async (req, res, next) => {
+
   try {
     let config = await Config.findOne({});
     if (!config) {

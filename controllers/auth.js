@@ -5,7 +5,7 @@ const admin=require('../firebase/firebase');
 exports.checkCommonAuth = async(req, res, next) => {
    try {
 		// Verify the Firebase user token using the Firebase Admin SDK
-      console.log(req.headers.authorization)
+      console.log(req.headers)
        const token=await req.headers.authorization;
      
 		const decodedToken = await admin.auth().verifyIdToken(token);

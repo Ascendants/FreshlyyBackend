@@ -9,12 +9,17 @@ const { ObjectId } = require('mongodb');
 const cron = require('node-cron');
 const SupportTicket = require('../models/SupportTicket');
 
+exports.checkSignupCustomer = (req, res, next) => {
+   const email=req.userEmail
+   
+};
+
 exports.signUp = async(req, res, next) => {
   console.log(req.body)
   let profilePic
 	try {
-    const email=req.userEmail
-		const { FirstName, LastName, dob, nic, gender, address} = req.body;
+    
+		const { FirstName, LastName, dob, nic, gender, address,email} = req.body;
 		console.log(FirstName,LastName,dob,nic,gender,address)
 		// Check if required fields are empty
 		if ( !FirstName || !LastName ||  !dob ||  !nic || !gender || !address) {
@@ -59,10 +64,11 @@ exports.signUp = async(req, res, next) => {
     newUser.save((err, savedUser) => {
       if(err){
         if (err.code===11000) {
-          console.error(err);
+          console.error("Error-",err);
           return res.status(500).json({ message: 'unsuccess',error:'Duplicate user;same email cannot be registered twice' });
         } 
         if(err){
+          console.log(err)
           return res.status(500).json({message:'unsuccess'})
         }
       }
@@ -72,7 +78,7 @@ exports.signUp = async(req, res, next) => {
 
 	  } catch (error) {
 		// Return an error message if the token is invalid or expired
-		  console.log(error)
+		  console.log("Error",error)
 	  }
 
 };
@@ -844,10 +850,11 @@ exports.getProducts = async (req, res, next) => {
     const user = await User.findOne({ email: userEmail });
     const isFarmer = user.accessLevel === 'farmer';
     const products = await Product.find({ status: 'Live' });
-
+    
     const productDetails = await Promise.all(
       products.map(async (product) => {
         const farmer = await User.findById(product.farmer);
+        console.log(farmer)
         const farmerSaleLocation = farmer.farmer.saleLocation;
         const customerLocation = isFarmer ? null : user.customer.slctdLocation;
 
@@ -864,7 +871,7 @@ exports.getProducts = async (req, res, next) => {
               `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             const distanceData = await distanceResponse.json();
-            // console.log(distanceData)
+            console.log(distanceData)
             distanceValue = distanceData.rows[0].elements[0].distance.text;
             distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
@@ -1049,6 +1056,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const allFamousProducts = await Promise.all(
       famousProducts.map(async (product) => {
         const farmer = await User.findById(product.farmer);
+        console.log(farmer)
         return {
           _id: product._id,
           price: product.price,
