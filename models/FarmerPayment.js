@@ -26,6 +26,10 @@ const farmerPaymentSchema = new Schema({
     type: String,
     default: null,
   },
+  createdDate: {
+    type: Date,
+    default: Date.now,
+  },
   paymentDate: {
     type: Date,
     default: null,

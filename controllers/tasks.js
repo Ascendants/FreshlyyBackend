@@ -10,6 +10,7 @@ const farmerController = require('../controllers/farmer');
 const DailyTaskReport = require('../models/DailyTaskReport');
 const Config = require('../models/Config');
 const { sendLoyaltyLevelUpNotifs } = require('./notifications');
+const FarmerPayment = require('../models/FarmerPayment');
 
 exports.cancelOrdersNotPaid = async (report) => {
   const orders = await Order.find({
@@ -68,17 +69,20 @@ exports.runDailyTasks = async () => {
     await closeInvoicesAtMonthEnd(session, date, report);
     appendToReport(report, 'Done Clearing Invoices');
     appendToReport(report);
+    appendToReport(report, 'Cancelling unpaid settlements');
+    appendToReport(report);
+    await cancelUnpaidSettlements(session, date, report);
+    appendToReport(report, 'Done Cancelling unpaid settlements');
+    appendToReport(report);
+
     await session.endSession();
     appendToReport(report, 'Cancelling unpaid orders');
     appendToReport(report);
     await this.cancelOrdersNotPaid(report);
     appendToReport(report, 'Done Cancelling unpaid orders');
     appendToReport(report);
-    // appendToReport(report, 'Cancelling unpaid settlements');
-    // appendToReport(report);
-    // await this.cancelSettlementsNotSettled(report);
-    // appendToReport(report, 'Done Cancelling unpaid settlements');
-    // appendToReport(report);
+
+    appendToReport(report);
     appendToReport(report, 'Done Running Daily Tasks');
     report.save();
   } catch (err) {
@@ -395,5 +399,25 @@ async function closeInvoicesAtMonthEnd(session, date, report) {
       );
       console.log(err);
     }
+  }
+}
+async function cancelUnpaidSettlements(session, date, report) {
+  try {
+    await session.withTransaction(async () => {
+      const unpaidSettlements = await FarmerPayment.find({
+        status: 'Pending',
+      });
+      for (let settlement of unpaidSettlements) {
+        const hoursAfterPlaced = (Date.now() - settlement.createdDate) / 36e5;
+        if (hoursAfterPlaced > 1) {
+          settlement.status = 'Failed';
+          await settlement.save({ session: session });
+          appendToReport(report, `Cancelled settlement ${settlement._id}`);
+        }
+      }
+    });
+  } catch (err) {
+    appendToReport(report, 'Error: Could not cancel unpaid settlements');
+    console.log(err);
   }
 }
