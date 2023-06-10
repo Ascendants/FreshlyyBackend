@@ -752,6 +752,7 @@ exports.getOrders = async (req, res, next) => {
     let orderData = [];
     orders.forEach((order) => {
       let status = 'to-pay';
+      let newOrder = false;
       if (order.orderUpdate.cancelled) {
         status = 'cancelled';
       } else if (!order.orderUpdate.payment) {
@@ -763,6 +764,12 @@ exports.getOrders = async (req, res, next) => {
           !order.orderUpdate.shipped)
       ) {
         status = 'processing';
+        const timeDifferenceInMinutes = moment
+          .duration(moment().diff(moment(order.orderUpdate.payment)))
+          .asMinutes();
+        if (timeDifferenceInMinutes < 30) {
+          newOrder = true;
+        }
       } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
         status = 'shipped';
       } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
@@ -789,6 +796,7 @@ exports.getOrders = async (req, res, next) => {
           : null,
         orderTotal: order.totalPrice + order.totalDeliveryCharge,
         status: status,
+        newOrder: newOrder,
       });
     });
     res.status(200).json({ message: 'Success', orders: orderData });
