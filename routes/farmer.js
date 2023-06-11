@@ -1,6 +1,7 @@
 const express = require('express');
 
 const farmerController = require('../controllers/farmer');
+const authController = require('../controllers/auth');
 
 const router = express.Router();
 
@@ -8,6 +9,8 @@ const { body } = require('express-validator');
 
 // router.get('/product/:purl', publicController.getProduct);
 // router.get('/user', publicController.createUser);
+router.use('*', authController.checkCommonAuth);
+router.use('*', authController.checkFarmerAuth);
 router.get('/hello', farmerController.getHello);
 router.get('/dashboard', farmerController.getDashboard);
 
