@@ -38,7 +38,13 @@ router.get('/get-support-tickets', customerController.getTickets);
 
 router.get('/farmerDetail/:farmerEmail',customerController.getFarmerProducts);
 
-router.get('orderDetailReview/:orderId',customerController.getOrderReview);
+router.get('/orderDetail/:orderId',customerController.getOrderReviewDetails);
+
+router.get('/followDetail/:userId',customerController.getFarmers);
+
+router.post('/follow/:customerId', customerController.follow);
+
+router.post('/follow/:customerId', customerController.unfollow);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -56,5 +62,6 @@ router.get('/get-order/:orderId', customerController.getOrderDetails);
 router.get('/get-orders/:type', customerController.getOrders);
 
 router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
+
 
 module.exports = router;

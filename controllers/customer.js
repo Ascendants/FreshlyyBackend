@@ -527,39 +527,39 @@ exports.postEditCard = async (req, res, next) => {
   }
 };
 
-// exports.getOrderDetails = async (req, res, next) => {
-//   const orderId = req.params.orderId;
-//   try {
-//     const order = await Order.findOne({
-//       _id: orderId,
-//       'orderUpdate.failed': { $eq: null },
-//       customer: req.user._id,
-//     });
-//     if (!order) {
-//       throw new Error('Order Not Found');
-//     }
+exports.getOrderDetails = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      customer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
 
-//     const orderData = order.toObject();
-//     for (item in orderData.items) {
-//       const itemData = await Product.findById(orderData.items[item].itemId);
+    const orderData = order.toObject();
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
 
-//       orderData.items[item] = {
-//         ...orderData.items[item],
-//         imageUri: itemData.imageUrls[0],
-//         title: itemData.title,
-//       };
-//     }
-//     res.status(200).json({ message: 'Success', order: orderData });
-//   } catch (error) {
-//     logger(error);
-//     if (error.message == 'Order Not Found') {
-//       res.status(404).json({ message: error.message });
-//       return;
-//     }
-//     res.status(500).json({ message: error.message });
-//     return;
-//   }
-// };
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
 
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
@@ -1110,14 +1110,15 @@ exports.getFarmerProducts = async (req, res, next) => {
   
 };
  
-exports.getOrderReview = async (req,res,next)=>{
+exports.getOrderReviewDetails = async (req,res)=>{
+  console.log(req.params.orderId)
   try {
     const order = await Order.findOne({ _id: req.params.orderId });
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
     const orderData = {
-      orderId: order._id,
+      orderId: req.params.orderId,
       farmerName : order.farmerName,
       deliveryRating:order.deliveryRating,
       farmerRating:order.farmerRating,
@@ -1136,9 +1137,63 @@ exports.getOrderReview = async (req,res,next)=>{
     
     res
       .status(200)
-      .json({ message: 'Success', order:orderData , products:productData});
+      .json({ message: 'Success', order:orderData});
   }catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.getFarmers= async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.userId });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const followingList=[];
+    for(let farmer of user.customer.following){
+      followingList.push({
+        farmerId:following.following[farmer],
+
+      })
+    }
+
+    const farmer = await User.findOne({ _id: farmerId });
+    const followingData = {
+      farmerName: farmer.fname + " " + farmer.lname,
+      farmerImage : farmer.profilePicUrl,
+    }
+
+    res
+      .status(200)
+      .json({ message: 'Success', farmers:followingData});
+  }catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+  
+};
+
+exports.follow = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.customerId);
+    user.customer.following.push(req.body.farmerId);
+    await user.save();    
+    res.status(200).json({ message: 'Success'});
+  } catch (error) {
+    res.status(500).json({ message: 'Fail to add following' });
+  }
+};
+
+exports.unfollow = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.customerId);
+    user.customer.following.pull(req.body.farmerId);
+    await user.save();    
+    res.status(200).json({ message: 'Success'});
+  } catch (error) {
+    res.status(500).json({ message: 'fail to remove following'});
   }
 };
