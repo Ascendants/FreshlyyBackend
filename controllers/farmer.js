@@ -35,45 +35,183 @@ exports.getHello = async (req, res, next) => {
 // };
 
 exports.getDashboard = async (req, res, next) => {
+  const user = {
+    fname: req.user.fname,
+    lname: req.user.lname,
+    totalEarnings: req.user.farmer.accTotalEarnings,
+    // notifications,
+    profilePicUrl: req.user.profilePicUrl,
+  };
+
+  // const notifications = await Notification.countDocuments({
+  //   user: req.user._id,
+  //   read: null,
+  //   customer: true,
+  // });
+  // user.notifications = notifications ? true: false;
+
   const liveProducts = await Product.countDocuments({
     farmer: req.user._id,
     status: 'Live',
   });
+
+  const liveProductsList = await Product.find(
+    { farmer: req.user._id, status: 'Live' },
+    {
+      _id: 1,
+      title: 1,
+      price: 1,
+      unit: 1,
+      qtyAvailable: 1,
+      imageUrls: 1,
+    }
+  );
+
   const pendingProducts = await Product.countDocuments({
     farmer: req.user._id,
     status: 'Quarantined',
   });
 
+  const pendingProductsList = await Product.find(
+    { farmer: req.user._id, status: 'Quarantined' },
+    {
+      _id: 1,
+      title: 1,
+      price: 1,
+      unit: 1,
+      qtyAvailable: 1,
+      imageUrls: 1,
+    }
+  );
+
   const pastOrders = await Order.countDocuments({
     farmer: req.user._id,
     'orderUpdate.closed': { $ne: null },
   });
-  const newOrders = await Order.countDocuments({
+
+  const pastOrdersList = await Order.find({
     farmer: req.user._id,
-    $or: [
-      { 'orderUpdate.processed': { $ne: null } },
-      { 'orderUpdate.shipped': { $ne: null } },
-      { 'orderUpdate.delivered': { $ne: null } },
-      { 'orderUpdate.pickedUp': { $ne: null } },
-      { 'orderUpdate.cancelled': { $ne: null } },
-      { 'orderUpdate.failed': { $ne: null } },
-      { 'orderUpdate.closed': { $ne: null } },
-    ],
-    'orderUpdate.placed': { $ne: null },
-    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.closed': { $ne: null },
   });
 
-  // console.log(newOrders);
-  res
-    .status(200)
-    .json({
-      message: 'Success',
-      user: req.user,
-      liveProducts,
-      pendingProducts,
-      pastOrders,
-      newOrders,
-    });
+  const pastOrderDetailsList = [];
+
+  for (const order of pastOrdersList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    pastOrderDetailsList.push(orderDetails);
+  }
+
+  const newOrders = await Order.countDocuments({
+    farmer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': null,
+  });
+
+  const newOrdersList = await Order.find({
+    farmer: req.user._id,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': null,
+  });
+
+  const newOrderDetailsList = [];
+
+  for (const order of newOrdersList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    newOrderDetailsList.push(orderDetails);
+  }
+
+  res.status(200).json({
+    message: 'Success',
+    user: user,
+    liveProducts,
+    pendingProducts,
+    pastOrders,
+    newOrders,
+    newOrderDetailsList,
+    liveProductsList,
+    pendingProductsList,
+    pastOrderDetailsList,
+  });
 };
 
 exports.insertProduct = async (req, res, next) => {
@@ -123,10 +261,11 @@ exports.insertProduct = async (req, res, next) => {
 };
 exports.getSellingProduct = async (req, res) => {
   try {
-    console.log('hii');
-    // console.log(req.productId);
     const productId = req.params.productId;
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({
+      _id: productId,
+      farmer: req.user._id,
+    });
     console.log(product);
     res.status(200).json({ message: 'Success', product: product });
   } catch (error) {
@@ -726,6 +865,7 @@ exports.postSettleAccount = async (req, res, next) => {
 };
 exports.getOrderDetails = async (req, res, next) => {
   const orderId = req.params.orderId;
+  console.log(orderId);
   try {
     const order = await Order.findOne({
       _id: orderId,
