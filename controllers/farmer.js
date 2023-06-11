@@ -34,9 +34,11 @@ exports.getDashboard = async (req, res, next) => {
 };
 
 exports.insertProduct = async (req, res, next) => {
-  const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
-  console.log(req.body);
-  const { price, qtyAvailable, description, title, minQtyIncrement } = req.body;
+  const { price, qtyAvailable, description, title, minQtyIncrement, images } =
+    req.body;
+  if (images?.length === 0) {
+    return res.status(400).json({ message: 'Please upload atleast one image' });
+  }
   const newProduct = new Product({
     title: title,
     status: 'Paused',
@@ -45,15 +47,9 @@ exports.insertProduct = async (req, res, next) => {
     overallRating: 3,
     minQtyIncrement: minQtyIncrement,
     unit: 'KG',
-    farmer: user,
+    farmer: req.user._id,
     qtyAvailable: qtyAvailable,
-    imageUrls: [
-      {
-        imageUrl:
-          'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa',
-        placeholder: '#9c7954',
-      },
-    ],
+    imageUrls: images,
   });
 
   if (minQtyIncrement >= qtyAvailable) {
@@ -127,7 +123,7 @@ async function updateProduct(productId, updatedFields) {
 }
 
 exports.updateProductDetails = async (req, res, next) => {
-  const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
+  const user = await User.findOne({ email: req.user._id });
   // console.log(req.body);
   console.log(req.params.productId);
 
