@@ -21,6 +21,7 @@ const Config = require('./models/Config');
 const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
 const farmerRoutes = require('./routes/farmer');
+const adminRoutes = require('./routes/admin');
 const errorController = require('./controllers/error');
 const taskController = require('./controllers/tasks');
 const Product = require('./models/Product');
@@ -45,6 +46,8 @@ app.use('/', async (req, res, next) => {
 app.use('/public', publicRoutes);
 app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
+app.use('/admin', adminRoutes);
+
 
 app.use(errorController.get404);
 
