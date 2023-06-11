@@ -181,6 +181,7 @@ exports.getDashboard = async (req, res, next) => {
       email: req.user.email,
       profilePicUrl: req.user.profilePicUrl,
       loyaltyPoints: req.user.customer.loyaltyPoints,
+      accessLevel: req.user.accessLevel,
     };
     const toPay = await Order.countDocuments({
       customer: req.user._id,
@@ -362,7 +363,8 @@ exports.postOrder = async (req, res, next) => {
       await order.save({ session });
       orders.push(order);
     }
-
+    req.user.customer.cart = [];
+    await req.user.save({ session });
     //remember to clear the cart in production
     session.commitTransaction(); //change this to commit
     res.status(200).json({ message: 'Success', orderDetails: orders });
@@ -841,7 +843,6 @@ exports.getOrderDetails = async (req, res, next) => {
       'orderUpdate.failed': { $eq: null },
       customer: req.user._id,
     });
-    console.log(req.user._id);
     if (!order) {
       throw new Error('Order Not Found');
     }

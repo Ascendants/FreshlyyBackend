@@ -168,6 +168,9 @@ const userSchema = new Schema({
       coupons: {
         type: [ObjectId],
       },
+      usedCoupons: {
+        type: [ObjectId],
+      },
       cart: [
         new Schema(
           {

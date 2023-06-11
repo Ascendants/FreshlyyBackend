@@ -9,6 +9,7 @@ const customerController = require('../controllers/customer');
 const farmerController = require('../controllers/farmer');
 const DailyTaskReport = require('../models/DailyTaskReport');
 const Config = require('../models/Config');
+const Coupon = require('../models/Coupon');
 const { sendLoyaltyLevelUpNotifs } = require('./notifications');
 const FarmerPayment = require('../models/FarmerPayment');
 
@@ -28,6 +29,15 @@ exports.cancelOrdersNotPaid = async (report) => {
     }
   }
 };
+async function generateCouponCode() {
+  while (true) {
+    const code = 'CP' + Math.floor(Math.random() * 1000000);
+    const coupon = await Coupon.findOne({ cCode: code });
+    if (!coupon) {
+      return code;
+    }
+  }
+}
 function getPreviousMonth(date) {
   const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1);
   const year = prevMonth.getFullYear();
@@ -192,7 +202,17 @@ async function clearFundsForOrder(session, date, report) {
           $inc: { 'customer.loyaltyPoints': Math.floor(totalPayment / 100) },
         }).session(session);
         if (newLoyaltyLevel.name != existingLoyaltyLevel.name) {
-          sendLoyaltyLevelUpNotifs(user, newLoyaltyLevel);
+          const code = await generateCouponCode();
+          const gift = new Coupon({
+            cCode: code,
+            type: 'Loyalty',
+            eDate: new Date().setDate(new Date().getDate() + 30),
+            percentage: newLoyaltyLevel.gift,
+            status: 'Active',
+          });
+          await gift.save({ session: session });
+
+          sendLoyaltyLevelUpNotifs(user, newLoyaltyLevel, gift.cCode);
         }
         appendToReport(
           report,

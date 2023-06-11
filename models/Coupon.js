@@ -18,6 +18,7 @@ const couponSchema = new Schema({
   cDate: {
     type: String,
     required: true,
+    default: () => new Date(),
   },
   eDate: {
     type: String,
@@ -32,6 +33,9 @@ const couponSchema = new Schema({
     type: String,
     enum: ['Default', 'Farmer', 'Loyalty'],
     default: 'Default',
+  },
+  customer: {
+    type: ObjectId,
   },
 });
 module.exports = mongoose.model('Coupon', couponSchema);

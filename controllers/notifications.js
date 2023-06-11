@@ -173,12 +173,16 @@ const sendOrderPickedUpEmail = async (farmer, customer, order) => {
   }
 };
 
-const sendLoyaltyLevelUpPushNotification = async (customer, loyaltyLevel) => {
+const sendLoyaltyLevelUpPushNotification = async (
+  customer,
+  loyaltyLevel,
+  code
+) => {
   try {
     const { sendPushNotification } = require('./notifications');
     const customerNotification = {
       title: 'You reached a new loyalty level 🎉!',
-      body: `Hooray 🎉, you have reached ${loyaltyLevel.name} loyalty level! Check your coupons to see what you can get!`,
+      body: `Hooray 🎉, you have reached ${loyaltyLevel.name} loyalty level! Use the code ${code} for a small discount!`,
     };
     await sendPushNotification(customer, customerNotification, true);
   } catch (err) {
@@ -186,12 +190,13 @@ const sendLoyaltyLevelUpPushNotification = async (customer, loyaltyLevel) => {
   }
 };
 
-const sendLoyaltyLevelUpEmail = async (customer, loyaltyLevel) => {
+const sendLoyaltyLevelUpEmail = async (customer, loyaltyLevel, code) => {
   try {
     const params = {
       customer: customer.fname,
       loyaltyLevel: loyaltyLevel.name,
       loyaltyBadge: loyaltyLevel.badge,
+      code,
     };
     customerEmail = {
       to: [
@@ -230,7 +235,7 @@ exports.sendOrderPickedUpNotifs = async (farmer, customer, order) => {
   await sendOrderPickedUpEmail(farmer, customer, order);
 };
 
-exports.sendLoyaltyLevelUpNotifs = async (customer, loyaltyLevel) => {
-  await sendLoyaltyLevelUpPushNotification(customer, loyaltyLevel);
-  await sendLoyaltyLevelUpEmail(customer, loyaltyLevel);
+exports.sendLoyaltyLevelUpNotifs = async (customer, loyaltyLevel, code) => {
+  await sendLoyaltyLevelUpPushNotification(customer, loyaltyLevel, code);
+  await sendLoyaltyLevelUpEmail(customer, loyaltyLevel, code);
 };

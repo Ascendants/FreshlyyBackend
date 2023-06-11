@@ -222,7 +222,6 @@ exports.insertProduct = async (req, res, next) => {
   }
   const newProduct = new Product({
     title: title,
-    status: 'Paused',
     description: description,
     price: price,
     overallRating: 3,
