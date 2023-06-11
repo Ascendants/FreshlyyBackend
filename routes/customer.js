@@ -1,10 +1,14 @@
 const express = require('express');
 
 const customerController = require('../controllers/customer');
+const authController = require('../controllers/auth');
 
 const router = express.Router();
 
 const { body } = require('express-validator');
+router.use('*',authController.checkCommonAuth);
+router.post('/signup',customerController.signUp);
+//router.use('*',customerController.checkSignupCustomer);
 
 router.post('/place-order/', customerController.postOrder);
 
@@ -29,6 +33,7 @@ router.get('/cart/', customerController.getCart);
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
+
 
 router.get('/mainpage', customerController.getProducts);
 

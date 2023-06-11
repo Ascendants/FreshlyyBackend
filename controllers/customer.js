@@ -15,6 +15,80 @@ const {
   sendOrderPickedUpNotifs,
 } = require('./notifications');
 
+exports.checkSignupCustomer = (req, res, next) => {
+   const email=req.userEmail
+   
+};
+
+exports.signUp = async(req, res, next) => {
+  console.log(req.body)
+  let profilePic
+	try {
+    
+		const { FirstName, LastName, dob, nic, gender, address,email} = req.body;
+		console.log(FirstName,LastName,dob,nic,gender,address)
+		// Check if required fields are empty
+		if ( !FirstName || !LastName ||  !dob ||  !nic || !gender || !address) {
+		  return res.status(400).json({message:'unsuccessful',error:'Please fill all the necessary details for signup'})
+		}
+		//Validate date of birth format
+    const date = new Date(dob);
+    const isValid = !isNaN(date.getTime()) && date.toISOString() === dob;
+    if (isValid) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+     console.log(formattedDate)
+    } else {
+      return res.status(400).json({message:'Invalid Date'});
+    }
+	 
+		const nicRegex = /^([0-9]{9}[x|X|v|V]|[0-9]{12})$/;
+		if (!nicRegex.test(nic)) {
+		  return res.status(400).json({ error: 'Please enter a valid NIC number' });
+    }
+    if(gender==='Male'){
+      profilePic='https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FmaleProPic.png?alt=media&token=84b9fbf6-47f8-4b38-b691-678c72be079e'
+    }
+    else{
+      profilePic='https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56'
+    }
+
+    const newUser=new User({
+      fname:FirstName,
+      lname:LastName,
+      gender:gender,
+      dob:dob,
+      email:email,
+      nic:nic,
+      accessLevel:req.body.accessLevel,
+      bAddress:address,
+      profilePicUrl:{ imageUrl:profilePic,placeholder: 'LJK-8|%2?^IoF}oft9odEPM{Iqt7'},
+    
+    })
+    newUser.save((err, savedUser) => {
+      if(err){
+        if (err.code===11000) {
+          console.error("Error-",err);
+          return res.status(500).json({ message: 'unsuccess',error:'Duplicate user;same email cannot be registered twice' });
+        } 
+        if(err){
+          console.log(err)
+          return res.status(500).json({message:'unsuccess'})
+        }
+      }
+      
+      return res.status(200).json({message:'Success',email:email})
+    });
+
+	  } catch (error) {
+		// Return an error message if the token is invalid or expired
+		  console.log("Error",error)
+	  }
+
+};
+
 const cancelOrder = async (orderId) => {
   if (!orderId) {
     return { status: 422, message: 'Validation Error' };
@@ -870,10 +944,11 @@ exports.getProducts = async (req, res, next) => {
     const user = await User.findOne({ email: userEmail });
     const isFarmer = user.accessLevel === 'farmer';
     const products = await Product.find({ status: 'Live' });
-
+    
     const productDetails = await Promise.all(
       products.map(async (product) => {
         const farmer = await User.findById(product.farmer);
+        console.log(farmer)
         const farmerSaleLocation = farmer.farmer.saleLocation;
         const customerLocation = isFarmer ? null : user.customer.slctdLocation;
 
@@ -890,7 +965,7 @@ exports.getProducts = async (req, res, next) => {
               `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             const distanceData = await distanceResponse.json();
-            // console.log(distanceData)
+            console.log(distanceData)
             distanceValue = distanceData.rows[0].elements[0].distance.text;
             distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
@@ -1075,6 +1150,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const allFamousProducts = await Promise.all(
       famousProducts.map(async (product) => {
         const farmer = await User.findById(product.farmer);
+        console.log(farmer)
         return {
           _id: product._id,
           price: product.price,

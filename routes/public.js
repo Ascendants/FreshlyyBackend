@@ -8,4 +8,5 @@ router.get('/product/:purl', publicController.getProduct);
 router.get('/user', publicController.createUser);
 router.get('/hello', publicController.createProduct);
 
+
 module.exports = router;
