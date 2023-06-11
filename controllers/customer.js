@@ -1378,8 +1378,8 @@ exports.getTickets = async (req, res, next) => {
   try {
     // console.log(req.user.email);
     // const email = req.user.email;
-    const email = 'harini@freshlyy.com';
-    const tickets = await SupportTicket.find({ userEmail: email });
+
+    const tickets = await SupportTicket.find({ userEmail: req.user.email });
     res.status(200).json({ message: 'Success', tickets: tickets });
   } catch (error) {
     console.log(error);

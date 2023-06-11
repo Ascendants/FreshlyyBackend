@@ -1,6 +1,7 @@
 const express = require('express');
 
 const customerController = require('../controllers/customer');
+const farmerController = require('../controllers/farmer');
 const authController = require('../controllers/auth');
 
 const router = express.Router();
@@ -36,6 +37,8 @@ router.get('/wishlist/', customerController.getWishList);
 
 router.post('/wishList/add', customerController.postWishListt);
 
+router.post('/support-ticket', farmerController.supportTicket);
+
 // router.delete('/wishList/remove/:id', customerController.removeWishlistItem);
 
 router.get('/cards/', customerController.getCards);
@@ -47,6 +50,9 @@ router.get('/mainpage', customerController.getProducts);
 router.get('/social-corner', customerController.getSocialProducts);
 
 router.get('/get-support-tickets', customerController.getTickets);
+
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
+
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,

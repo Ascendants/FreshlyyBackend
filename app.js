@@ -67,7 +67,7 @@ mongoose
   .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
-    taskController.runDailyTasks();
+    // taskController.runDailyTasks();
     app.listen(process.env.PORT);
   })
   .catch((err) => console.log(err));
