@@ -527,39 +527,39 @@ exports.postEditCard = async (req, res, next) => {
   }
 };
 
-exports.getOrderDetails = async (req, res, next) => {
-  const orderId = req.params.orderId;
-  try {
-    const order = await Order.findOne({
-      _id: orderId,
-      'orderUpdate.failed': { $eq: null },
-      customer: req.user._id,
-    });
-    if (!order) {
-      throw new Error('Order Not Found');
-    }
+// exports.getOrderDetails = async (req, res, next) => {
+//   const orderId = req.params.orderId;
+//   try {
+//     const order = await Order.findOne({
+//       _id: orderId,
+//       'orderUpdate.failed': { $eq: null },
+//       customer: req.user._id,
+//     });
+//     if (!order) {
+//       throw new Error('Order Not Found');
+//     }
 
-    const orderData = order.toObject();
-    for (item in orderData.items) {
-      const itemData = await Product.findById(orderData.items[item].itemId);
+//     const orderData = order.toObject();
+//     for (item in orderData.items) {
+//       const itemData = await Product.findById(orderData.items[item].itemId);
 
-      orderData.items[item] = {
-        ...orderData.items[item],
-        imageUri: itemData.imageUrls[0],
-        title: itemData.title,
-      };
-    }
-    res.status(200).json({ message: 'Success', order: orderData });
-  } catch (error) {
-    logger(error);
-    if (error.message == 'Order Not Found') {
-      res.status(404).json({ message: error.message });
-      return;
-    }
-    res.status(500).json({ message: error.message });
-    return;
-  }
-};
+//       orderData.items[item] = {
+//         ...orderData.items[item],
+//         imageUri: itemData.imageUrls[0],
+//         title: itemData.title,
+//       };
+//     }
+//     res.status(200).json({ message: 'Success', order: orderData });
+//   } catch (error) {
+//     logger(error);
+//     if (error.message == 'Order Not Found') {
+//       res.status(404).json({ message: error.message });
+//       return;
+//     }
+//     res.status(500).json({ message: error.message });
+//     return;
+//   }
+// };
 
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
@@ -810,7 +810,7 @@ exports.getProducts = async (req, res, next) => {
           }
         }
 
-        return {
+        return{
           _id: product._id,
           price: product.price,
           title: title,
@@ -1053,7 +1053,7 @@ exports.getTickets = async (req, res, next) => {
   }
 };
 
-
+ 
 
 exports.getProducts = async (req, res, next) => {
   Product.find().populate({path:'farmer',populate:{path:'farmer'}}).then(products=>{
@@ -1080,4 +1080,65 @@ exports.getProducts = async (req, res, next) => {
   }).catch(err=>{
     res.status(500).send(err)
   })
+};
+
+exports.getFarmerProducts = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.params.farmerEmail });
+    const userData = {
+      farmerName: user.fname + " " + user.lname,
+      farmerImage : user.profilePicUrl,
+    }
+    const products = await Product.find({ status: 'Live', farmer:user._id });
+    const productData = []
+    for(let product of products){
+      productData.push({
+        title: product.title,
+        imageUrl: product.imageUrls[0],
+        overallRating: product.overallRating,
+        uPrice: product.price
+      })
+    }
+    
+    res
+      .status(200)
+      .json({ message: 'Success', farmer:userData , products:productData});
+  }catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+  
+};
+ 
+exports.getOrderReview = async (req,res,next)=>{
+  try {
+    const order = await Order.findOne({ _id: req.params.orderId });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const orderData = {
+      orderId: order._id,
+      farmerName : order.farmerName,
+      deliveryRating:order.deliveryRating,
+      farmerRating:order.farmerRating,
+      items:order.items,
+    }
+    console.log(orderData)
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    
+    res
+      .status(200)
+      .json({ message: 'Success', order:orderData , products:productData});
+  }catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
 };
