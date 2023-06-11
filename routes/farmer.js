@@ -64,4 +64,11 @@ router.get('/invoice/:invoiceId', farmerController.getInvoice);
 router.post('/settlement-intent/', farmerController.postSettlementIntent);
 
 router.post('/settle-account/', farmerController.postSettleAccount);
+
+router.get('/order/:orderId', farmerController.getOrderDetails);
+
+router.post(
+  '/update-order-status/:orderId',
+  farmerController.postUpdateOrderStatus
+);
 module.exports = router;

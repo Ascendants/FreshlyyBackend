@@ -22,40 +22,56 @@ exports.getHello = async (req, res, next) => {
 
 //Geting all the farmer's dashboard data
 // exports.getDashboard = async (req, res, next) => {
-  // const data = {
-  // 	fname: 'Nadun',
-  // 	lname: 'Fernando',
-  // 	imageUrl:
-  // 		'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fkom.jpg?alt=media&token=49a88f0c-ab79-4d84-8ddb-ada16a2b0101',
-  // };
-  // const orders = await Order.find({ farmer: req.user._id }); //gives all orders belonging to farmer;
-  // const products = await Product.find({ farmer: req.user._id });
-  // res.status(200).json({ message: 'Success', user: req.user });
-  
+// const data = {
+// 	fname: 'Nadun',
+// 	lname: 'Fernando',
+// 	imageUrl:
+// 		'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fkom.jpg?alt=media&token=49a88f0c-ab79-4d84-8ddb-ada16a2b0101',
+// };
+// const orders = await Order.find({ farmer: req.user._id }); //gives all orders belonging to farmer;
+// const products = await Product.find({ farmer: req.user._id });
+// res.status(200).json({ message: 'Success', user: req.user });
+
 // };
 
 exports.getDashboard = async (req, res, next) => {
-	const liveProducts = await Product.countDocuments({ farmer: req.user._id, status: 'Live' });
-	const pendingProducts = await Product.countDocuments({ farmer: req.user._id, status: 'Quarantined' });
-	
-	const pastOrders = await Order.countDocuments({ farmer: req.user._id, 'orderUpdate.closed': {$ne : null} }); 
-	const newOrders = await Order.countDocuments({
-		farmer: req.user._id,
-		$or: [
-			{'orderUpdate.processed': {$ne : null}},
-			{'orderUpdate.shipped': {$ne : null}},
-			{'orderUpdate.delivered': {$ne : null}},
-			{'orderUpdate.pickedUp': {$ne : null}},
-			{'orderUpdate.cancelled': {$ne : null}},
-			{'orderUpdate.failed': {$ne : null}},
-			{'orderUpdate.closed': {$ne : null}},
-		],
-		'orderUpdate.placed': {$ne : null},
-		'orderUpdate.payment': {$ne : null},
-	});
+  const liveProducts = await Product.countDocuments({
+    farmer: req.user._id,
+    status: 'Live',
+  });
+  const pendingProducts = await Product.countDocuments({
+    farmer: req.user._id,
+    status: 'Quarantined',
+  });
 
-	// console.log(newOrders);
-  res.status(200).json({ message: 'Success', user: req.user, liveProducts, pendingProducts, pastOrders, newOrders});
+  const pastOrders = await Order.countDocuments({
+    farmer: req.user._id,
+    'orderUpdate.closed': { $ne: null },
+  });
+  const newOrders = await Order.countDocuments({
+    farmer: req.user._id,
+    $or: [
+      { 'orderUpdate.processed': { $ne: null } },
+      { 'orderUpdate.shipped': { $ne: null } },
+      { 'orderUpdate.delivered': { $ne: null } },
+      { 'orderUpdate.pickedUp': { $ne: null } },
+      { 'orderUpdate.cancelled': { $ne: null } },
+      { 'orderUpdate.failed': { $ne: null } },
+      { 'orderUpdate.closed': { $ne: null } },
+    ],
+    'orderUpdate.placed': { $ne: null },
+    'orderUpdate.payment': { $ne: null },
+  });
+
+  // console.log(newOrders);
+  res.status(200).json({
+    message: 'Success',
+    user: req.user,
+    liveProducts,
+    pendingProducts,
+    pastOrders,
+    newOrders,
+  });
 };
 
 exports.insertProduct = async (req, res, next) => {
@@ -703,6 +719,98 @@ exports.postSettleAccount = async (req, res, next) => {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
     logger(error);
+    return;
+  }
+};
+exports.getOrderDetails = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      farmer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
+
+    const orderData = order.toObject();
+    const customer = await User.findById(orderData.customer);
+    orderData['customerName'] = customer.fname + ' ' + customer.lname;
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+exports.postUpdateOrderStatus = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      farmer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
+    const status = req.body.status;
+    if (order.orderUpdate.cancelled) {
+      throw new Error('Order Cancelled');
+    }
+    if (!order.orderUpdate.payment) {
+      throw new Error('Order Not Paid');
+    }
+    switch (status) {
+      case 'processed':
+        if (order.orderUpdate.processed) {
+          throw new Error('Order Already Processed');
+        }
+        order.orderUpdate.processed = Date.now();
+        break;
+      case 'shipped':
+        if (order.orderUpdate.shipped) {
+          throw new Error('Order Already Shipped');
+        }
+        order.orderUpdate.shipped = Date.now();
+        break;
+      case 'delivered':
+        if (order.orderUpdate.delivered) {
+          throw new Error('Order Already Delivered');
+        }
+        order.orderUpdate.delivered = Date.now();
+        break;
+    }
+    await order.save();
+    const orderData = order.toObject();
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    res.status(500).json({ message: error.message });
     return;
   }
 };

@@ -766,6 +766,7 @@ exports.getOrderDetails = async (req, res, next) => {
       'orderUpdate.failed': { $eq: null },
       customer: req.user._id,
     });
+    console.log(req.user._id);
     if (!order) {
       throw new Error('Order Not Found');
     }
