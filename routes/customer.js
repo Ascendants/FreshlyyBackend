@@ -30,6 +30,10 @@ router.post('/cart/add', customerController.postCart);
 
 router.get('/wishlist/', customerController.getWishList);
 
+router.post('/wishList/add', customerController.postWishListt);
+
+// router.delete('/wishList/remove/:id', customerController.removeWishlistItem);
+
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);

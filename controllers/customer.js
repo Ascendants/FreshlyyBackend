@@ -487,6 +487,7 @@ exports.postCart = async (req, res) => {
 
 exports.getWishList = async (req, res, next) => {
   const wishList = req.user.customer.wishList.toObject();
+  console.log(wishList);
   if (!wishList) {
     res.status(200).json({ message: 'Success', cart: null });
   }
@@ -511,6 +512,80 @@ exports.getWishList = async (req, res, next) => {
     return;
   }
 };
+
+exports.postWishListt = async (req, res) => {
+  let { productId, quantity } = req.body;
+  quantity = parseFloat(quantity);
+  const product = await Product.findById(productId);
+  const wishList = req.user.customer.wishList;
+  
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  //Check if the product is already in the cart
+  let wishListItem;
+  wishList.forEach((farmer) => {
+    farmer.items.forEach((item) => {
+      if (item.item == productId) {
+        wishListItem = item;
+      }
+    });
+  });
+  if (wishListItem) {
+    if (quantity < product.qtyAvailable) {
+      cartItem.qty += quantity;
+      req.user.save();
+      return res.status(200).json({ message: 'Success' }); 
+    }
+    return res.status(404).json({ message: 'Quantity unavailable' });
+  }
+  let farmer = wishList.find((farmer) => farmer.farmer == product.farmer);
+  if (farmer) {
+    farmer.items.push({
+      item: product._id,
+      qty: quantity,
+    });
+    req.user.save();
+    return res.status(200).json({ message: 'Success' });
+  }
+
+  wishList.push({
+    farmer: product.farmer,
+    distance: 3,
+    costPerKM: 200,
+    items: [
+      {
+        item: product._id,
+        qty: quantity,
+      },
+    ],
+  });
+  console.log(req.user.customer.wishList);
+  req.user.save();
+  return res.status(200).json({ message: 'Success' });
+};
+ 
+// exports.removeWishlistItem = async (req, res) => {
+//   const itemId = req.params.id;
+//   const wishList = req.user.customer.wishList;
+
+//   let foundItem = false;
+//   wishList.forEach((farmer) => {
+//     const itemIndex = farmer.items.findIndex((item) => item._id == itemId);
+//     if (itemIndex !== -1) {
+//       farmer.items.splice(itemIndex, 1);
+//       foundItem = true;
+//       return;
+//     }
+//   });
+
+//   if (foundItem) {
+//     req.user.save();
+//     return res.status(200).json({ message: 'Success' });
+//   } else {
+//     return res.status(404).json({ message: 'Item not found in wishlist' });
+//   }
+// };  
 
 exports.getCards = async (req, res, next) => {
   try {
