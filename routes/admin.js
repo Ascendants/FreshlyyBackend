@@ -12,4 +12,8 @@ router.get("/coupons", adminController.getCoupons);
 
 router.post("/createCoupons", adminController.createCoupon);
 
+router.get("/editCoupons", adminController.editCoupons);
+
+router.put("/updateCoupons/:id", adminController.updateCoupons);
+
 module.exports = router;

@@ -35,10 +35,9 @@ exports.getCoupons = async (req, res) => {
   }
 };
 
-exports.createCoupon = (req, res, next) => {
-  // console.log(req.body);
-  const { presentage, cCode, cDate, eDate } = req.body;
-  const userEmail = req.user.email;
+exports.createCoupon = (req, res) => {
+  console.log(req.body);
+  const { presentage, cCode, cDate, eDate, userEmail } = req.body;
 
   const newCoupon = new Coupon({
     userEmail: userEmail,
@@ -48,13 +47,30 @@ exports.createCoupon = (req, res, next) => {
     eDate: eDate,
   });
 
-  newCoupon.save((err) => {
-    if (err) {
-      console.log(err);
-      res.status(500).send("Error saving data");
+  newCoupon.save((error) => {
+    if (error) {
+      res.status(500).send(error);
     } else {
       console.log("success");
       res.status(200).json({ message: "Success" });
     }
   });
+};
+
+exports.editCoupons = async (req, res) => {
+  try {
+    const data = await Coupon.find({ status: { $ne: "delete" } });
+    res.status(200).json({ message: "Success", coupon: data });
+  } catch (error) {
+    res.status(500).json({ message: "fail" });
+  }
+};
+
+exports.updateCoupons = async (req, res) => {
+  try {
+    const data = await Coupon.findByIdAndUpdate(req.params.id, req.body);
+    res.status(200).json({ message: "Success", coupon: data });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
 };
