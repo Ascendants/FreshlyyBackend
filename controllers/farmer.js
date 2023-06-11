@@ -64,14 +64,16 @@ exports.getDashboard = async (req, res, next) => {
   });
 
   // console.log(newOrders);
-  res.status(200).json({
-    message: 'Success',
-    user: req.user,
-    liveProducts,
-    pendingProducts,
-    pastOrders,
-    newOrders,
-  });
+  res
+    .status(200)
+    .json({
+      message: 'Success',
+      user: req.user,
+      liveProducts,
+      pendingProducts,
+      pastOrders,
+      newOrders,
+    });
 };
 
 exports.insertProduct = async (req, res, next) => {
