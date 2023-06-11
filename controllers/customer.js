@@ -671,7 +671,7 @@ exports.postWishListt = async (req, res) => {
   quantity = parseFloat(quantity);
   const product = await Product.findById(productId);
   const wishList = req.user.customer.wishList;
-  
+
   if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
@@ -686,9 +686,9 @@ exports.postWishListt = async (req, res) => {
   });
   if (wishListItem) {
     if (quantity < product.qtyAvailable) {
-      cartItem.qty += quantity;
+      wishListItem.qty += quantity;
       req.user.save();
-      return res.status(200).json({ message: 'Success' }); 
+      return res.status(200).json({ message: 'Success' });
     }
     return res.status(404).json({ message: 'Quantity unavailable' });
   }
@@ -715,9 +715,9 @@ exports.postWishListt = async (req, res) => {
   });
   console.log(req.user.customer.wishList);
   req.user.save();
-  return res.status(200).json({ message: 'Success' });
+  return res.status(200).json({ message: 'Success' });
 };
- 
+
 // exports.removeWishlistItem = async (req, res) => {
 //   const itemId = req.params.id;
 //   const wishList = req.user.customer.wishList;
@@ -738,7 +738,7 @@ exports.postWishListt = async (req, res) => {
 //   } else {
 //     return res.status(404).json({ message: 'Item not found in wishlist' });
 //   }
-// };  
+// };
 
 exports.getCards = async (req, res, next) => {
   try {
@@ -1423,4 +1423,33 @@ exports.getCheckFarmer = async (req, res, next) => {
   } catch (error) {
     console.log(error);
   }
+};
+
+exports.getProduct = async (req, res, next) => {
+  const purl = req.params.purl;
+  const product = (
+    await Product.findOne({
+      publicUrl: purl,
+    })
+  ).toObject();
+  product.isWishListed = false;
+  for (farmerItem of req.user.customer.wishList) {
+    if (farmerItem.farmer == product.farmer) {
+      for (productItem of farmerItem.items) {
+        if (productItem.item == product._id) {
+          product.isWishListed = true;
+          break;
+        }
+      }
+      break;
+    }
+  }
+  console.log(product.isWishListed);
+  const farmer = await User.findOne(product.farmer);
+  const data = {
+    ...product,
+    farmerName: farmer.fname,
+    farmerImage: farmer.profilePicUrl,
+  };
+  res.status(200).json({ message: 'Success', product: data });
 };

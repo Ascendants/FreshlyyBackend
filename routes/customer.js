@@ -6,8 +6,8 @@ const authController = require('../controllers/auth');
 const router = express.Router();
 
 const { body } = require('express-validator');
-router.use('*',authController.checkCommonAuth);
-router.post('/signup',customerController.signUp);
+router.use('*', authController.checkCommonAuth);
+router.post('/signup', customerController.signUp);
 //router.use('*',customerController.checkSignupCustomer);
 
 router.post('/place-order/', customerController.postOrder);
@@ -42,7 +42,6 @@ router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
 
-
 router.get('/mainpage', customerController.getProducts);
 
 router.get('/social-corner', customerController.getSocialProducts);
@@ -67,5 +66,7 @@ router.get('/get-orders/:type', customerController.getOrders);
 router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
 
 router.get('/notifications', customerController.getNotifications);
+
+router.get('/product/:purl', customerController.getProduct);
 
 module.exports = router;
