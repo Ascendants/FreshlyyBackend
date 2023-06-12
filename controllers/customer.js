@@ -779,24 +779,24 @@ exports.addAllToCart = async (req, res) => {
   let wqty = 0;
   let wdateAdded = 0;
   for (const wishItem of wishList) {
-    for(const item of wishItem.items){
-            witem = item.item
-            wqty =  item.qty
-            wdateAdded = item.dateAdded
-     }
+    for (const item of wishItem.items) {
+      witem = item.item;
+      wqty = item.qty;
+      wdateAdded = item.dateAdded;
+    }
     cart.push({
       farmer: wishItem.farmer,
       distance: wishItem.distance,
       costPerKM: wishItem.costPerKM,
       items: [
         {
-            item: witem,
-            qty: wqty,
-            dateAdded: wdateAdded,
+          item: witem,
+          qty: wqty,
+          dateAdded: wdateAdded,
         },
       ],
-    })
-  };
+    });
+  }
   req.user.save();
   return res.status(200).json({ message: 'Success' });
 };
@@ -902,7 +902,6 @@ exports.postWishListt = async (req, res) => {
 //     return res.status(404).json({ message: 'Item not found in wishlist' });
 //   }
 // };
-
 exports.getCards = async (req, res, next) => {
   try {
     const stripe = require('stripe')(process.env.STRIPE_SECRET);

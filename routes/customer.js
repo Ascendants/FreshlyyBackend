@@ -34,23 +34,6 @@ router.get('/create-stripe-account', customerController.getCreateStripeAccount);
 
 router.get('/cart/', customerController.getCart);
 
-router.post('/cart/add', customerController.postCart);
-
-router.post('/add-all-to-cart', customerController.addAllToCart);
-
-router.post('/cart/edit', customerController.postEditCart);
-
-router.post('/cart/delete/:productId', customerController.postDeleteCartItem);
-
-router.get('/item/:productId', customerController.getItem);
-router.get('/wishlist/', customerController.getWishList);
-
-router.post('/wishList/add', customerController.postWishListt);
-
-router.post('/support-ticket', farmerController.supportTicket);
-
-// router.delete('/wishList/remove/:id', customerController.removeWishlistItem);
-
 router.get('/cards/', customerController.getCards);
 
 router.get('/dashboard', customerController.getDashboard);
@@ -59,7 +42,30 @@ router.get('/mainpage', customerController.getProducts);
 
 router.get('/social-corner', customerController.getSocialProducts);
 
-router.get('/get-support-tickets', customerController.getTickets);
+router.get('/selected-location/', customerController.getLocation);
+
+router.get('/farmerDetail/:farmerEmail', customerController.getFarmerProducts);
+
+router.get('/orderDetail/:orderId', customerController.getOrderReviewDetails);
+
+router.get('/followDetail/', customerController.getFarmers);
+
+router.post('/follow/:farmerId', customerController.follow);
+
+router.get('/cards/', customerController.getCards);
+
+router.get(
+  '/reportFarmer/:farmerId',
+  customerController.getReportFarmerDetails
+);
+
+//router.post("/sendLocation/", customerController.postLocation);
+
+//router.post("/deleteLocation/", customerController.deleteLocation);
+
+router.get('/selected-location/', customerController.getLocation);
+
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
 
 router.get('/support-ticket/:id', farmerController.getSupportTicket);
 
@@ -82,6 +88,11 @@ router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
 
 router.get('/notifications', customerController.getNotifications);
 
+router.get('/product/:purl', customerController.getProduct);
+
+router.post('/reset-push-token', customerController.postResetPushToken);
+
+router.post('/update-push-token', customerController.postUpdatePushToken);
 router.get('/product/:purl', customerController.getProduct);
 
 router.post('/reset-push-token', customerController.postResetPushToken);
