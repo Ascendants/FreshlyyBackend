@@ -42,6 +42,8 @@ router.post('/cart/edit', customerController.postEditCart);
 
 router.post('/cart/delete/:productId', customerController.postDeleteCartItem);
 
+// router.get('/get-chatDetails/:productId', customerController.getChatDetails);
+
 router.get('/item/:productId', customerController.getItem);
 router.get('/wishlist/', customerController.getWishList);
 

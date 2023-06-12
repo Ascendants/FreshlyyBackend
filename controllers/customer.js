@@ -752,6 +752,21 @@ exports.postDeleteCartItem = async (req, res) => {
     return;
   }
 };
+
+// exports.getChatDetails = async (req, res) => {
+//   try {
+//     const { farmerId } = req.params;
+//     console.log(farmerId);
+//     const farmer = await User.findOne({ _id: farmerId });
+//     console.log(farmer);
+//     res.status(200).json({ message: 'Success' });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Something went wrong' });
+//     logger(error);
+//     return;
+//   }
+// }
+
 exports.getItem = async (req, res) => {
   try {
     const { productId } = req.params;
@@ -779,20 +794,20 @@ exports.addAllToCart = async (req, res) => {
   let wqty = 0;
   let wdateAdded = 0;
   for (const wishItem of wishList) {
-    for(const item of wishItem.items){
-            witem = item.item
-            wqty =  item.qty
-            wdateAdded = item.dateAdded
-     }
+    for (const item of wishItem.items) {
+      witem = item.item
+      wqty = item.qty
+      wdateAdded = item.dateAdded
+    }
     cart.push({
       farmer: wishItem.farmer,
       distance: wishItem.distance,
       costPerKM: wishItem.costPerKM,
       items: [
         {
-            item: witem,
-            qty: wqty,
-            dateAdded: wdateAdded,
+          item: witem,
+          qty: wqty,
+          dateAdded: wdateAdded,
         },
       ],
     })
