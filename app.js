@@ -67,7 +67,9 @@ mongoose
   .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
-    // taskController.runDailyTasks();
+    const crons = require('./cron');
+
+    // taskController.runTasks();
     app.listen(process.env.PORT);
   })
   .catch((err) => console.log(err));
