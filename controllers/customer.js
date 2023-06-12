@@ -461,18 +461,25 @@ exports.postPayment = async (req, res, next) => {
   try {
     const stripe = require('stripe')(process.env.STRIPE_SECRET);
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
+    const paidOrders = [];
     for (let orderId of orders) {
       const order = await Order.findById(orderId).session(session);
       if (!order) {
+        session.abortTransaction();
         return res.status(404).json({ message: 'Order not found' });
       }
       if (order.orderUpdate.payment != null) {
+        session.abortTransaction();
         return res.status(403).json({ message: 'Already Paid' });
       }
       if (order.orderUpdate.cancelled != null) {
+        session.abortTransaction();
+
         return res.status(403).json({ message: 'Order has been cancelled' });
       }
       if (order.orderUpdate.failed != null) {
+        session.abortTransaction();
+
         return res.status(403).json({ message: 'Order has failed' });
       }
       let total = order.totalPrice + order.totalDeliveryCharge;
@@ -507,12 +514,12 @@ exports.postPayment = async (req, res, next) => {
         order.orderUpdate.payment = new Date();
       }
       await order.save({ session });
+      paidOrders.push(order.toObject());
     }
     if (!saveCard && payFrom != 'cod') {
       await stripe.paymentMethods.detach(payFrom);
     }
-    for (let orderId of orders) {
-      const order = (await Order.findById(orderId)).toObject();
+    for (let order of paidOrders) {
       if (!order) return;
       for (let i in order.items) {
         const item = await Product.findById(order.items[i].itemId);
@@ -523,6 +530,7 @@ exports.postPayment = async (req, res, next) => {
       const customer = await User.findById(order.customer);
       const farmer = await User.findById(order.farmer);
       sendOrderConfirmedNotifs(farmer, customer, order);
+      console.log('MAIL', order._id);
     }
     await session.commitTransaction();
     res.status(200).json({ message: 'Success', orderDetails: orders });
@@ -779,24 +787,24 @@ exports.addAllToCart = async (req, res) => {
   let wqty = 0;
   let wdateAdded = 0;
   for (const wishItem of wishList) {
-    for(const item of wishItem.items){
-            witem = item.item
-            wqty =  item.qty
-            wdateAdded = item.dateAdded
-     }
+    for (const item of wishItem.items) {
+      witem = item.item;
+      wqty = item.qty;
+      wdateAdded = item.dateAdded;
+    }
     cart.push({
       farmer: wishItem.farmer,
       distance: wishItem.distance,
       costPerKM: wishItem.costPerKM,
       items: [
         {
-            item: witem,
-            qty: wqty,
-            dateAdded: wdateAdded,
+          item: witem,
+          qty: wqty,
+          dateAdded: wdateAdded,
         },
       ],
-    })
-  };
+    });
+  }
   req.user.save();
   return res.status(200).json({ message: 'Success' });
 };

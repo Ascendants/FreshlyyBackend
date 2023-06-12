@@ -200,6 +200,138 @@ exports.getDashboard = async (req, res, next) => {
     newOrderDetailsList.push(orderDetails);
   }
 
+  const toDeliver = await Order.countDocuments({
+    farmer: req.user._id,
+    isDelivery: true,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.delivered': null,
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.closed': null,
+  });
+
+  const toDeliverList = await Order.find({
+    farmer: req.user._id,
+    isDelivery: true,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.delivered': null,
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.closed': null,
+  });
+
+  const toDeliverOrdersList = [];
+
+  for (const order of toDeliverList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    toDeliverOrdersList.push(orderDetails);
+  }
+
+  const willPickup = await Order.countDocuments({
+    farmer: req.user._id,
+    isDelivery: false,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.pickedUp': null,
+    'orderUpdate.closed': null,
+  });
+
+  const willPickupList = await Order.find({
+    farmer: req.user._id,
+    isDelivery: false,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.pickedUp': null,
+    'orderUpdate.closed': null,
+  });
+  const willPickupOrdersList = [];
+
+  for (const order of willPickupList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    willPickupOrdersList.push(orderDetails);
+  }
   res.status(200).json({
     message: 'Success',
     user: user,
@@ -211,6 +343,10 @@ exports.getDashboard = async (req, res, next) => {
     liveProductsList,
     pendingProductsList,
     pastOrderDetailsList,
+    toDeliver,
+    toDeliverOrdersList,
+    willPickup,
+    willPickupOrdersList,
   });
 };
 
