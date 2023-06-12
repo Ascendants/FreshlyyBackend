@@ -84,7 +84,7 @@ exports.runDailyTasks = async () => {
     await cancelUnpaidSettlements(session, date, report);
     appendToReport(report, 'Done Cancelling unpaid settlements');
     appendToReport(report);
-
+    await resetLoyaltyPoints(session, date, report);
     await session.endSession();
     appendToReport(report, 'Cancelling unpaid orders');
     appendToReport(report);
@@ -421,6 +421,30 @@ async function closeInvoicesAtMonthEnd(session, date, report) {
     }
   }
 }
+
+async function resetLoyaltyPoints(session, date, report) {
+  //reseting loyaltypoints at the end of month
+  if (date.getDate()) {
+    appendToReport(
+      report,
+      'Today is the 1th of month, resetting loyalty points to 0...'
+    );
+    try {
+      await session.withTransaction(async () => {
+        await User.updateMany(
+          { 'customer.loyaltyPoints': { $gt: 0 } },
+          { 'customer.loyaltyPoints': 0 },
+          { session: session }
+        );
+      });
+      appendToReport(report, 'Successfully reset loyalty points.');
+    } catch (err) {
+      appendToReport(report, 'Error: Could not reset loyalty points');
+      console.log(err);
+    }
+  }
+}
+
 async function cancelUnpaidSettlements(session, date, report) {
   try {
     await session.withTransaction(async () => {
