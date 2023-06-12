@@ -1640,6 +1640,139 @@ exports.postUpdatePushToken = async (req, res, next) => {
   }
 };
 
+exports.getFarmerProducts = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.params.farmerEmail });
+    const userData = {
+      farmerId: user._id,
+      farmerName: user.fname + ' ' + user.lname,
+      farmerImage: user.profilePicUrl,
+    };
+    const products = await Product.find({ status: 'Live', farmer: user._id });
+    const productData = [];
+    for (let product of products) {
+      productData.push({
+        productid: product._id,
+        title: product.title,
+        imageUrl: product.imageUrls[0],
+        overallRating: product.overallRating,
+        uPrice: product.price,
+      });
+    }
+    userData.isFollowing = req.user.customer.following.includes(
+      userData.farmerId
+    );
+
+    res
+      .status(200)
+      .json({ message: 'Success', farmer: userData, products: productData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.getOrderReviewDetails = async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.orderId });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const orderData = {
+      orderId: req.params.orderId,
+      farmerName: order.farmerName,
+      deliveryRating: order.deliveryRating,
+      farmerRating: order.farmerRating,
+      items: order.items,
+    };
+    const itemData = orderData.items;
+    const productData = [];
+    for (item in itemData) {
+      const product = await Product.findById(itemData[item].itemId);
+      const data = {};
+      data['uPrice'] = itemData[item].uPrice;
+      data['qty'] = itemData[item].qty;
+      data['imageUrl'] = product.imageUrls[0];
+      data['title'] = product.title;
+      productData.push(data);
+    }
+    res
+      .status(200)
+      .json({ message: 'Success', order: orderData, product: productData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.getReportFarmerDetails = async (req, res) => {
+  try {
+    const farmer = await User.findOne({ _id: req.params.farmerId });
+    const farmerData = {
+      farmerId: farmer._id,
+      farmerName: farmer.fname + ' ' + farmer.lname,
+      farmerImage: farmer.profilePicUrl,
+    };
+    res.status(200).json({ message: 'Success', farmer: farmerData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.getFarmers = async (req, res) => {
+  try {
+    const followData = req.user.customer.following;
+    const followingData = [];
+    for (let farmer in followData) {
+      const follow = await User.findById(followData[farmer]);
+      const data = {};
+      data['farmerid'] = follow._id;
+      data['farmerName'] = follow.fname + ' ' + follow.lname;
+      data['imageUrl'] = follow.profilePicUrl;
+      followingData.push(data);
+    }
+    res.status(200).json({ message: 'Success', follow: followingData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.follow = async (req, res) => {
+  try {
+    req.user.customer.following.push(req.params.farmerId);
+    await req.user.save();
+
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Fail to add following' });
+  }
+};
+
+exports.unfollow = async (req, res) => {
+  try {
+    let index = -1;
+    for (let following in req.user.customer.following) {
+      if (req.user.customer.following[following] == req.params.farmerId) {
+        index = following;
+        break;
+      }
+    }
+    console.log(index);
+    if (index == -1) {
+      return res.status(200).json({ message: 'Success' });
+    }
+    req.user.customer.following.splice(index, 1);
+    // user.customer.following.pull(req.body.farmerId);
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Fail to Remove Following' });
+  }
+};
+
 exports.getLocation = async (req, res) => {
   try {
     return res
@@ -1648,5 +1781,40 @@ exports.getLocation = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Fail to get Location' });
+  }
+};
+
+exports.postLocation = async (req, res) => {
+  try {
+    req.user.customer.slctdLocation.name.push(req.params.locationName);
+    req.user.customer.slctdLocation.longitude.push(req.params.longitude);
+    req.user.customer.slctdLocation.latutude.push(req.params.latitude);
+    await req.user.save();
+
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Fail to add Location' });
+  }
+};
+
+exports.deleteLocation = async (req, res) => {
+  try {
+    let index = -1;
+    for (let item in req.user.customer.slctdLocation) {
+      if (req.user.customer.slctdLocation.name == req.params.userId) {
+        index = slctdLocation;
+        break;
+      }
+    }
+    console.log(index);
+    if (index == -1) {
+      return res.status(200).json({ message: 'Success' });
+    }
+    req.user.customer.slctdLocation.splice(index, 1);
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Fail to Remove Location' });
   }
 };
