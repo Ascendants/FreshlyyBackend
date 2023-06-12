@@ -589,55 +589,145 @@ exports.getCart = async (req, res, next) => {
 };
 
 exports.postCart = async (req, res) => {
-  let { productId, quantity } = req.body;
-  quantity = parseFloat(quantity);
-  const product = await Product.findById(productId);
-  const cart = req.user.customer.cart;
+  try {
+    let { productId, quantity } = req.body;
+    quantity = parseFloat(quantity);
+    const product = await Product.findById(productId);
+    const cart = req.user.customer.cart;
 
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
-  }
-  //Check if the product is already in the cart
-  let cartItem;
-  cart.forEach((farmer) => {
-    farmer.items.forEach((item) => {
-      if (item.item == productId) {
-        cartItem = item;
-      }
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    //Check if the product is already in the cart
+    let cartItem;
+    cart.forEach((farmer) => {
+      farmer.items.forEach((item) => {
+        if (item.item == productId) {
+          cartItem = item;
+        }
+      });
     });
-  });
-  if (cartItem) {
-    if (quantity < product.qtyAvailable) {
-      cartItem.qty += quantity;
+    if (cartItem) {
+      if (quantity + cartItem.qty <= product.qtyAvailable) {
+        cartItem.qty += quantity;
+        req.user.save();
+        return res.status(200).json({ message: 'Success' });
+      }
+      return res.status(404).json({ message: 'Quantity unavailable' });
+    }
+    let farmer = cart.find((farmer) => {
+      console.log(farmer.farmer, product.farmer);
+      return farmer.farmer.toString() == product.farmer.toString();
+    });
+    if (farmer) {
+      farmer.items.push({
+        item: product._id,
+        qty: quantity,
+      });
       req.user.save();
       return res.status(200).json({ message: 'Success' });
     }
-    return res.status(404).json({ message: 'Quantity unavailable' });
-  }
-  let farmer = cart.find((farmer) => farmer.farmer == product.farmer);
-  if (farmer) {
-    farmer.items.push({
-      item: product._id,
-      qty: quantity,
+
+    cart.push({
+      farmer: product.farmer,
+      distance: 3,
+      costPerKM: 200,
+      items: [
+        {
+          item: product._id,
+          qty: quantity,
+        },
+      ],
     });
     req.user.save();
     return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
   }
+};
 
-  cart.push({
-    farmer: product.farmer,
-    distance: 3,
-    costPerKM: 200,
-    items: [
-      {
-        item: product._id,
-        qty: quantity,
-      },
-    ],
-  });
-  console.log(req.user.customer.cart);
-  req.user.save();
-  return res.status(200).json({ message: 'Success' });
+exports.postEditCart = async (req, res) => {
+  try {
+    let { productId, quantity } = req.body;
+    quantity = parseFloat(quantity);
+    if (!quantity) {
+      return res.status(404).json({ message: 'Invalid quantity' });
+    }
+    const product = Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    const inCart = req.user.customer.cart.find((farmer) => {
+      return farmer.items.find((item) => {
+        return item.item.toString() == productId.toString();
+      });
+    });
+    console.log(inCart);
+    if (!inCart) {
+      return res.status(404).json({ message: 'Product not in cart' });
+    }
+    if (inCart.qty + quantity > product.qtyAvailable) {
+      return res.status(404).json({ message: 'Quantity unavailable' });
+    }
+    inCart.qty += quantity;
+    req.user.save();
+    return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+
+exports.postDeleteCartItem = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!productId) {
+      return res.status(404).json({ message: 'Invalid product id' });
+    }
+    const cart = req.user.customer.cart;
+    let farmerIndex;
+    let itemIndex;
+    cart.forEach((farmer, index) => {
+      farmer.items.forEach((item, i) => {
+        if (item.item.toString() == productId.toString()) {
+          farmerIndex = index;
+          itemIndex = i;
+        }
+      });
+    });
+    if (farmerIndex == undefined || itemIndex == undefined) {
+      return res.status(404).json({ message: 'Product not in cart' });
+    }
+    cart[farmerIndex].items.splice(itemIndex, 1);
+    if (cart[farmerIndex].items.length == 0) {
+      cart.splice(farmerIndex, 1);
+    }
+    req.user.save();
+    return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+};
+exports.getItem = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!productId) {
+      return res.status(404).json({ message: 'Invalid product id' });
+    }
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    return res.status(200).json({ message: 'Success', product: product });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
 };
 
 exports.getWishList = async (req, res, next) => {

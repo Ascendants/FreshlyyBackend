@@ -1,22 +1,25 @@
 const Product = require('../models/Product');
 const User = require('../models/User');
 const { ObjectId } = require('mongodb');
-const admin=require('../firebase/firebase');
+const admin = require('../firebase/firebase');
 const { json } = require('body-parser');
 
-
 exports.getProduct = async (req, res, next) => {
-  const purl = req.params.purl;
-  const product = await Product.findOne({
-    publicUrl: purl,
-  });
-  const farmer = await User.findOne(product.farmer);
-  const data = {
-    ...product._doc,
-    farmerName: farmer.fname,
-    farmerImage: farmer.profilePicUrl,
-  };
-  res.status(200).json({ message: 'Success', product: data });
+  try {
+    const purl = req.params.purl;
+    const product = await Product.findOne({
+      publicUrl: purl,
+    });
+    const farmer = await User.findOne(product.farmer);
+    const data = {
+      ...product._doc,
+      farmerName: farmer.fname,
+      farmerImage: farmer.profilePicUrl,
+    };
+    res.status(200).json({ message: 'Success', product: data });
+  } catch (err) {
+    res.status(500).json({ message: 'Something went wrong', error: err });
+  }
 };
 exports.createUser = async (req, res, next) => {
   const user = new User({
@@ -79,4 +82,3 @@ exports.getHello = (req, res, next) => {
   console.log('hello');
   return res.status(200).json({ message: 'Hello There' });
 };
-
