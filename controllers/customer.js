@@ -13,6 +13,7 @@ const {
   sendOrderConfirmedNotifs,
   sendOrderCancelledNotifs,
   sendOrderPickedUpNotifs,
+  sendLowStockLevelNotifs,
 } = require('./notifications');
 
 exports.checkSignupCustomer = (req, res, next) => {
@@ -346,10 +347,22 @@ exports.postOrder = async (req, res, next) => {
           },
           { new: true, session: session }
         );
+
         if (!result) {
           throw new Error('Not Available');
           //if one of them fails, abort the transaction by throwing an error
         }
+        try {
+          if (result.qtyAvailable <= 2) {
+            const farmer = await User.findById(farmerItem.farmer);
+            console.log(farmer);
+            console.log(result);
+            sendLowStockLevelNotifs(farmer, result);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+
         order.items.push({
           itemId: ObjectId(result),
           qty: cartItem.qty,

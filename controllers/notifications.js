@@ -239,3 +239,16 @@ exports.sendLoyaltyLevelUpNotifs = async (customer, loyaltyLevel, code) => {
   await sendLoyaltyLevelUpPushNotification(customer, loyaltyLevel, code);
   await sendLoyaltyLevelUpEmail(customer, loyaltyLevel, code);
 };
+
+exports.sendLowStockLevelNotifs = async (farmer, product) => {
+  try {
+    const { sendPushNotification } = require('./notifications');
+    const farmerNotification = {
+      title: 'Low Stock Level',
+      body: `Your stock level for ${product.title} is low 🤯!`,
+    };
+    await sendPushNotification(farmer, farmerNotification, false);
+  } catch (err) {
+    console.log(err);
+  }
+};
