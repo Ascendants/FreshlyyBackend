@@ -1143,6 +1143,21 @@ exports.getOrderReviewDetails = async (req, res) => {
   }
 };
 
+exports.getReportFarmerDetails = async (req, res) => {
+  try {
+    const farmer = await User.findOne({ _id: req.params.farmerId });
+    const farmerData = {
+      farmerId: farmer._id,
+      farmerName: farmer.fname + " " + farmer.lname,
+      farmerImage: farmer.profilePicUrl,
+    };
+    res.status(200).json({ message: "Success", farmer: farmerData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unsuccessful" });
+  }
+};
+
 exports.getFarmers = async (req, res) => {
   try {
     const followData = req.user.customer.following;
@@ -1192,26 +1207,52 @@ exports.unfollow = async (req, res) => {
     res.status(200).json({ message: "Success" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "fail to remove following" });
+    res.status(500).json({ message: "Fail to Remove Following" });
   }
 };
 
-// exports.getLocation = async (req, res) => {
-//   try {
-//     const location = req.user.customer.slctdLocation;
-//     const locationData = [];
-//     for (let place in location) {
-//       const selectedLocation = await User.findById(location[place]);
-//       const data = {};
-//       data["locationId"] = follow._id;
-//       data["farmerName"] = follow.fname + " " + follow.lname;
-//       data["imageUrl"] = follow.profilePicUrl;
-//       followingData.push(data);
-//     }
-//     res.status(200).json({ message: "Success", follow: followingData });
+exports.getLocation = async (req, res) => {
+  try {
+    return res
+      .status(200)
+      .json({ message: "Success", location: req.user.customer.slctdLocation });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Fail to get Location" });
+  }
+};
 
-//     res.status(200).json({ message: "Success" });
-//   } catch (error) {
-//     res.status(500).json({ message: "Fail to add following" });
-//   }
-// };
+exports.postLocation = async (req, res) => {
+  try {
+    req.user.customer.slctdLocation.name.push(req.params.locationName);
+    req.user.customer.slctdLocation.longitude.push(req.params.longitude);
+    req.user.customer.slctdLocation.latutude.push(req.params.latitude);
+    await req.user.save();
+
+    res.status(200).json({ message: "Success" });
+  } catch (error) {
+    res.status(500).json({ message: "Fail to add Location" });
+  }
+};
+
+exports.deleteLocation = async (req, res) => {
+  try {
+    let index = -1;
+    for (let item in req.user.customer.slctdLocation) {
+      if (req.user.customer.slctdLocation.name == req.params.userId) {
+        index = slctdLocation;
+        break;
+      }
+    }
+    console.log(index);
+    if (index == -1) {
+      return res.status(200).json({ message: "Success" });
+    }
+    req.user.customer.slctdLocation.splice(index, 1);
+    await req.user.save();
+    res.status(200).json({ message: "Success" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Fail to Remove Location" });
+  }
+};

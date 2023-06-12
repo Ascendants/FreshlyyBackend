@@ -46,7 +46,16 @@ router.post("/follow/:farmerId", customerController.follow);
 
 router.post("/unfollow/:farmerId", customerController.unfollow);
 
-//router.get("/locationDetail/", customerController.getLocations);
+router.get(
+  "/reportFarmer/:farmerId",
+  customerController.getReportFarmerDetails
+);
+
+//router.post("/sendLocation/", customerController.postLocation);
+
+//router.post("/deleteLocation/", customerController.deleteLocation);
+
+router.get("/selected-location/", customerController.getLocation);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
