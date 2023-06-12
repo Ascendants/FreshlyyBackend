@@ -640,6 +640,37 @@ exports.postCart = async (req, res) => {
   return res.status(200).json({ message: 'Success' });
 };
 
+exports.addAllToCart = async (req, res) => {
+  // console.log(req.user._id);
+  const { wishList } = req.body;
+  const cart = req.user.customer.cart;
+  // console.log(wishList);
+  let witem = 0;
+  let wqty = 0;
+  let wdateAdded = 0;
+  for (const wishItem of wishList) {
+    for(const item of wishItem.items){
+            witem = item.item
+            wqty =  item.qty
+            wdateAdded = item.dateAdded
+     }
+    cart.push({
+      farmer: wishItem.farmer,
+      distance: wishItem.distance,
+      costPerKM: wishItem.costPerKM,
+      items: [
+        {
+            item: witem,
+            qty: wqty,
+            dateAdded: wdateAdded,
+        },
+      ],
+    })
+  };
+  req.user.save();
+  return res.status(200).json({ message: 'Success' });
+};
+
 exports.getWishList = async (req, res, next) => {
   const wishList = req.user.customer.wishList.toObject();
   console.log(wishList);

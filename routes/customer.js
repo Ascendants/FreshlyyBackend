@@ -33,6 +33,8 @@ router.get('/cart/', customerController.getCart);
 
 router.post('/cart/add', customerController.postCart);
 
+router.post('/add-all-to-cart', customerController.addAllToCart);
+
 router.get('/wishlist/', customerController.getWishList);
 
 router.post('/wishList/add', customerController.postWishListt);
