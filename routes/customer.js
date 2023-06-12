@@ -1,50 +1,52 @@
-const express = require('express');
+const express = require("express");
 
-const customerController = require('../controllers/customer');
+const customerController = require("../controllers/customer");
 
 const router = express.Router();
 
-const { body } = require('express-validator');
+const { body } = require("express-validator");
 
-router.post('/place-order/', customerController.postOrder);
+router.post("/place-order/", customerController.postOrder);
 
-router.post('/payment/', customerController.postPayment);
+router.post("/payment/", customerController.postPayment);
 
-router.post('/like/:productId', customerController.postLike);
+router.post("/like/:productId", customerController.postLike);
 
-router.get('/get-payment-intent', customerController.getPaymentIntent);
+router.get("/get-payment-intent", customerController.getPaymentIntent);
 
-router.get('/get-card-setup-intent', customerController.getCardSetupIntent);
+router.get("/get-card-setup-intent", customerController.getCardSetupIntent);
 
 //testing route
 router.get(
-  '/create-stripe-customer',
+  "/create-stripe-customer",
   customerController.getCreateStripeCustomer
 );
 
-router.get('/create-stripe-account', customerController.getCreateStripeAccount);
+router.get("/create-stripe-account", customerController.getCreateStripeAccount);
 
-router.get('/cart/', customerController.getCart);
+router.get("/cart/", customerController.getCart);
 
-router.get('/cards/', customerController.getCards);
+router.get("/cards/", customerController.getCards);
 
-router.get('/dashboard', customerController.getDashboard);
+router.get("/dashboard", customerController.getDashboard);
 
-router.get('/mainpage', customerController.getProducts);
+router.get("/mainpage", customerController.getProducts);
 
-router.get('/social-corner', customerController.getSocialProducts);
+router.get("/social-corner", customerController.getSocialProducts);
 
-router.get('/get-support-tickets', customerController.getTickets);
+router.get("/get-support-tickets", customerController.getTickets);
 
-router.get('/farmerDetail/:farmerEmail',customerController.getFarmerProducts);
+router.get("/farmerDetail/:farmerEmail", customerController.getFarmerProducts);
 
-router.get('/orderDetail/:orderId',customerController.getOrderReviewDetails);
+router.get("/orderDetail/:orderId", customerController.getOrderReviewDetails);
 
-router.get('/followDetail/:userId',customerController.getFarmers);
+router.get("/followDetail/", customerController.getFarmers);
 
-router.post('/follow/:customerId', customerController.follow);
+router.post("/follow/:farmerId", customerController.follow);
 
-router.post('/follow/:customerId', customerController.unfollow);
+router.post("/unfollow/:farmerId", customerController.unfollow);
+
+//router.get("/locationDetail/", customerController.getLocations);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -53,15 +55,14 @@ const cardTypes = {
   amex: /^3[47][0-9]{13}$/,
 };
 
-router.delete('/delete-card/:cardId', customerController.deleteRemoveCard);
+router.delete("/delete-card/:cardId", customerController.deleteRemoveCard);
 
-router.post('/cancel-order/:orderId', customerController.postCancelOrder);
-router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
+router.post("/cancel-order/:orderId", customerController.postCancelOrder);
+router.post("/confirm-pickup/:orderId", customerController.postPickupOrder);
 
-router.get('/get-order/:orderId', customerController.getOrderDetails);
-router.get('/get-orders/:type', customerController.getOrders);
+router.get("/get-order/:orderId", customerController.getOrderDetails);
+router.get("/get-orders/:type", customerController.getOrders);
 
-router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
-
+router.get("/getSpecificOrder/:orderId", customerController.getSpecificOrder);
 
 module.exports = router;
