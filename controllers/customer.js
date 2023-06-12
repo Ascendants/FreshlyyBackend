@@ -21,7 +21,6 @@ exports.checkSignupCustomer = (req, res, next) => {
 };
 
 exports.signUp = async (req, res, next) => {
-  console.log(req.body);
   let profilePic;
   try {
     const { FirstName, LastName, dob, nic, gender, address, email } = req.body;
@@ -29,7 +28,7 @@ exports.signUp = async (req, res, next) => {
     // Check if required fields are empty
     if (!FirstName || !LastName || !dob || !nic || !gender || !address) {
       return res.status(400).json({
-        message: 'unsuccessful',
+        message: 'Unsuccessful',
         error: 'Please fill all the necessary details for signup',
       });
     }
@@ -43,12 +42,17 @@ exports.signUp = async (req, res, next) => {
       const formattedDate = `${year}-${month}-${day}`;
       console.log(formattedDate);
     } else {
-      return res.status(400).json({ message: 'Invalid Date' });
+      return res
+        .status(400)
+        .json({ message: 'Unsuccessful', error: 'Invalid Date' });
     }
 
     const nicRegex = /^([0-9]{9}[x|X|v|V]|[0-9]{12})$/;
     if (!nicRegex.test(nic)) {
-      return res.status(400).json({ error: 'Please enter a valid NIC number' });
+      return res.status(400).json({
+        message: 'Unsuccessful',
+        error: 'Please enter a valid NIC number',
+      });
     }
     if (gender === 'Male') {
       profilePic =
@@ -71,22 +75,40 @@ exports.signUp = async (req, res, next) => {
         imageUrl: profilePic,
         placeholder: 'LJK-8|%2?^IoF}oft9odEPM{Iqt7',
       },
+      customer: {
+        cart: [],
+        wishList: [],
+        locations: [],
+        selectedLocation: null,
+        following: [],
+        loyaltyPoints: 0,
+        coupons: [],
+        usedCoupons: [],
+      },
     });
+    if (req.body.accessLevel === 'Farmer') {
+      newUser.farmer = {
+        occupation: req.body.Occupation,
+        hasVehicle: req.body.hasVehicle == 'Has a vehicle to deliver',
+        maxDeliDistance: req.body.maxDeliDistance,
+        nicUrl: 'NULL',
+        deliveryCharge: req.body.delCharge,
+        status: 'Quarantined',
+      };
+    }
     newUser.save((err, savedUser) => {
       if (err) {
         if (err.code === 11000) {
           console.error('Error-', err);
           return res.status(500).json({
-            message: 'unsuccess',
-            error: 'Duplicate user;same email cannot be registered twice',
+            message: 'Unsuccessful',
+            error:
+              'User already exists. Please try again with a new email / NIC',
           });
         }
-        if (err) {
-          console.log(err);
-          return res.status(500).json({ message: 'unsuccess' });
-        }
+        console.log(err);
+        return res.status(500).json({ message: 'Unsuccessful' });
       }
-
       return res.status(200).json({ message: 'Success', email: email });
     });
   } catch (error) {
@@ -1556,4 +1578,29 @@ exports.getProduct = async (req, res, next) => {
     farmerImage: farmer.profilePicUrl,
   };
   res.status(200).json({ message: 'Success', product: data });
+};
+
+exports.postResetPushToken = async (req, res, next) => {
+  try {
+    req.user.pushToken = 'null';
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (err) {
+    logger(err);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.postUpdatePushToken = async (req, res, next) => {
+  try {
+    if (!req.body.token) {
+      throw new Error('Token not found');
+    }
+    req.user.pushToken = req.body.token;
+    req.user.save();
+    return res.status(200).json({ message: 'Success' });
+  } catch (err) {
+    logger(err);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
 };

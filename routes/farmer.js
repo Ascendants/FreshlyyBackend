@@ -67,6 +67,8 @@ router.post('/settle-account/', farmerController.postSettleAccount);
 
 router.get('/order/:orderId', farmerController.getOrderDetails);
 
+router.post('/delete-product/:productId', farmerController.postDeleteProduct);
+
 router.post(
   '/update-order-status/:orderId',
   farmerController.postUpdateOrderStatus

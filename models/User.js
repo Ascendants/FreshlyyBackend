@@ -130,7 +130,7 @@ const userSchema = new Schema({
       },
       followers: {
         type: [ObjectId],
-        min: null,
+        default: [],
       },
       status: {
         type: String,
@@ -144,7 +144,10 @@ const userSchema = new Schema({
         default: 'Active',
         enum: ['Active', 'Suspended'],
       },
-      bankAccount: BankAccount,
+      bankAccount: {
+        type: BankAccount,
+        default: null,
+      },
     },
     { _id: false }
   ),

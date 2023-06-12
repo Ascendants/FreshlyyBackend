@@ -955,3 +955,18 @@ exports.postUpdateOrderStatus = async (req, res, next) => {
     return;
   }
 };
+exports.postDeleteProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findByIdAndUpdate(req.params.productId, {
+      status: 'Deleted',
+    });
+    if (!product) {
+      throw new Error('Product Not Found');
+    }
+
+    return res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
