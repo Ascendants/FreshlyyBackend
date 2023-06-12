@@ -1639,3 +1639,14 @@ exports.postUpdatePushToken = async (req, res, next) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
+
+exports.getLocation = async (req, res) => {
+  try {
+    return res
+      .status(200)
+      .json({ message: 'Success', location: req.user.customer.slctdLocation });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Fail to get Location' });
+  }
+};
