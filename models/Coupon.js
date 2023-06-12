@@ -1,5 +1,5 @@
-const { ObjectId } = require('mongodb');
-const mongoose = require('mongoose');
+const { ObjectId } = require("mongodb");
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const couponSchema = new Schema({
   userEmail: {
@@ -13,6 +13,7 @@ const couponSchema = new Schema({
   cCode: {
     type: String,
     required: true,
+    unique: [true, "Coupon code is already exisitng"],
   },
   cDate: {
     type: String,
@@ -24,8 +25,8 @@ const couponSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Active', 'Deactivate'],
-    default: 'Pending',
+    enum: ["Pending", "Active", "Deactivate", "Paused"],
+    default: "Pending",
   },
 });
-module.exports = mongoose.model('Coupon', couponSchema);
+module.exports = mongoose.model("Coupon", couponSchema);

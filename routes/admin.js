@@ -16,4 +16,6 @@ router.get("/editCoupons", adminController.editCoupons);
 
 router.put("/updateCoupons/:id", adminController.updateCoupons);
 
+router.post("/verifyCouponCode", adminController.verifyCouponCode);
+
 module.exports = router;
