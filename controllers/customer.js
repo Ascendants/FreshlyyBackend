@@ -61,6 +61,10 @@ exports.signUp = async (req, res, next) => {
       profilePic =
         'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56';
     }
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripeCustomer = await stripe.customers.create({
+      email: email,
+    });
 
     const newUser = new User({
       fname: FirstName,
@@ -85,6 +89,7 @@ exports.signUp = async (req, res, next) => {
         coupons: [],
         usedCoupons: [],
       },
+      stripeId: stripeCustomer.id,
     });
     if (req.body.accessLevel === 'Farmer') {
       newUser.farmer = {
