@@ -36,12 +36,13 @@ router.get('/cart/', customerController.getCart);
 
 router.post('/cart/add', customerController.postCart);
 
+router.post('/add-all-to-cart', customerController.addAllToCart);
+
 router.post('/cart/edit', customerController.postEditCart);
 
 router.post('/cart/delete/:productId', customerController.postDeleteCartItem);
 
 router.get('/item/:productId', customerController.getItem);
-
 router.get('/wishlist/', customerController.getWishList);
 
 router.post('/wishList/add', customerController.postWishListt);
