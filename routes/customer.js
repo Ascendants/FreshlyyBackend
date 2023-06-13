@@ -101,6 +101,8 @@ router.post('/reset-push-token', customerController.postResetPushToken);
 
 router.post('/update-push-token', customerController.postUpdatePushToken);
 
+router.get('/get-chatDetails/:farmerId', customerController.getChatDetails);
+
 router.get('/wishlist/', customerController.getWishList);
 
 router.post('/wishList/add', customerController.postWishListt);
