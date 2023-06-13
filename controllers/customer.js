@@ -677,8 +677,9 @@ exports.postCart = async (req, res) => {
     });
     if (cartItem) {
       if (quantity + cartItem.qty <= product.qtyAvailable) {
+        console.log(cartItem);
         cartItem.qty += quantity;
-        req.user.save();
+        await req.user.save();
         return res.status(200).json({ message: 'Success' });
       }
       return res.status(404).json({ message: 'Quantity unavailable' });
@@ -1436,6 +1437,7 @@ exports.getSocialProducts = async (req, res, next) => {
 
     const topSellingProducts = await Promise.all(
       topselling[0].top_selling_products.map(async (item) => {
+        console.log(item);
         const product = await Product.findById(item);
         const farmer = await User.findById(product.farmer);
         return {
