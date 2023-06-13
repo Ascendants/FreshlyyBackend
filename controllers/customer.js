@@ -616,13 +616,17 @@ exports.getChatDetails = async (req, res) => {
     const farmerEmail = farmer.email;
     const farmerLname = farmer.lname;
     console.log(farmerEmail);
-    res.status(200).json({ message: 'Success', farmerEmail: farmerEmail, farmerLname: farmerLname });
+    res.status(200).json({
+      message: 'Success',
+      farmerEmail: farmerEmail,
+      farmerLname: farmerLname,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
-}
+};
 
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
@@ -1699,6 +1703,7 @@ exports.getFarmerProducts = async (req, res, next) => {
 
 exports.getOrderReviewDetails = async (req, res) => {
   try {
+    console.log(req.params);
     const order = await Order.findOne({ _id: req.params.orderId });
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -1836,9 +1841,9 @@ exports.deleteLocation = async (req, res) => {
     }
     if (
       req.user.customer.slctdLocation.latitude ==
-      req.user.customer.locations[index].latitude &&
+        req.user.customer.locations[index].latitude &&
       req.user.customer.slctdLocation.longitude ==
-      req.user.customer.locations[index].longitude
+        req.user.customer.locations[index].longitude
     ) {
       req.user.customer.slctdLocation = null;
     }
