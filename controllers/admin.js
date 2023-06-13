@@ -48,8 +48,8 @@ exports.getCoupons = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
   const { presentage, cCode, cDate, eDate, userEmail } = req.body;
-
-  if (Coupon.find({ cCode: cCode })) {
+  const coupon = await Coupon.findOne({ cCode: cCode });
+  if (coupon) {
     return res.status(422).json({ message: "coupon code already exits" });
   }
   if (!presentage || !cCode || !cDate || !eDate || !userEmail) {
