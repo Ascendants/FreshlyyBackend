@@ -24,6 +24,8 @@ router.get('/payout-requests', farmerController.getPayoutRequests);
 
 router.get('/invoices', farmerController.getInvoices);
 
+router.get("/reports", farmerController.getFarmerReports);
+
 router.post(
   '/save-account',
   [
