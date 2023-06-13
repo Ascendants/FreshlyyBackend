@@ -471,6 +471,33 @@ exports.getCards = async (req, res, next) => {
   }
 };
 
+// exports.getProducts = async (req, res, next) => {
+//   Product.find()
+//     .populate({ path: 'farmer', populate: { path: 'farmer' } })
+//     .then((products) => {
+//       const dataToSend = [];
+
+//       for (let prod of products) {
+//         const data = {};
+//         data['_id'] = prod._id;
+//         data['title'] = prod.title;
+//         data['imageUrl'] = prod.imageUrls[0];
+//         data['price'] = prod.price;
+//         data['overallRating'] = prod.overallRating;
+//         data['unit'] = prod.unit;
+//         data['farmer'] = prod.farmer;
+//         data['description'] = prod.description;
+//         data['likes'] = prod.likes;
+//         dataToSend.push(data);
+//       }
+
+//       res.status(200).send({ message: 'success', products: dataToSend });
+//     })
+//     .catch((err) => {
+//       res.status(500).send(err);
+//     });
+// };
+
 exports.deleteRemoveCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   try {
@@ -561,9 +588,229 @@ exports.getOrders = async (req, res, next) => {
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
           'orderUpdate.payment': null,
-          'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
         }).sort({ _id: -1 });
+        break;
+      case 'processing':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': null,
+          customer: req.user._id,
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            'orderUpdate.failed': { $eq: null },
+            'orderUpdate.payment': { $ne: null },
+            'orderUpdate.processed': { $ne: null },
+            'orderUpdate.shipped': null,
+            isDelivery: true,
+            customer: req.user._id,
+          })),
+        ];
+        break;
+      case 'to-pickup':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.pickedUp': null,
+          isDelivery: false,
+          customer: req.user._id,
+        }).sort({ _id: -1 });
+        break;
+      case 'shipped':
+        orders = await Order.find({
+          customer: req.user._id,
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.shipped': { $ne: null },
+          'orderUpdate.delivered': null,
+        });
+        break;
+      case 'to-review':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: -1,
+          deliveryRating: -1,
+          'orderUpdate.delivered': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+        });
+        orders = [
+          ...orders,
+          ...(await Order.find({
+            customer: req.user._id,
+            farmerRating: -1,
+            deliveryRating: -1,
+            'orderUpdate.pickedUp': { $ne: null },
+            'orderUpdate.failed': { $eq: null },
+          })),
+        ];
+        break;
+      case 'completed':
+        orders = await Order.find({
+          customer: req.user._id,
+          farmerRating: { $ne: -1 },
+          deliveryRating: { $ne: -1 },
+          'orderUpdate.failed': { $eq: null },
+        });
+        break;
+      default:
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        }).sort({ _id: -1 });
+        break;
+    }
+
+    if (!this.getOrderDetails) {
+      throw new Error('No Orders');
+    }
+    let orderData = [];
+    orders.forEach((order) => {
+      let status = 'to-pay';
+      if (!order.orderUpdate.payment) {
+        status = 'to-pay';
+      } else if (
+        !order.orderUpdate.processed ||
+        (order.orderUpdate.processed &&
+          order.isDelivery &&
+          !order.orderUpdate.shipped)
+      ) {
+        status = 'processing';
+      } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
+        status = 'shipped';
+      } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
+        status = 'to-pickup';
+      } else if (
+        (order.orderUpdate.delivered || order.orderUpdate.pickedUp) &&
+        order.farmerRating == -1
+      ) {
+        status = 'to-review';
+      } else if (order.farmerRating != -1) {
+        status = 'completed';
+      }
+      orderData.push({
+        farmerName: order.farmerName,
+        orderId: order._id,
+        orderPlaced: order.orderUpdate.placed
+          ? moment(order.orderUpdate.placed).format('YYYY-MM-DD')
+          : null,
+        orderPaid: order.orderUpdate.payment
+          ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
+          : null,
+        orderCancelled: order.orderUpdate.cancelled
+          ? moment(order.orderUpdate.cancelled).format('YYYY-MM-DD')
+          : null,
+        orderTotal: order.totalPrice + order.totalDeliveryCharge,
+        status: status,
+      });
+    });
+    res.status(200).json({ message: 'Success', orders: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'No Orders') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+exports.deleteRemoveCard = async (req, res, next) => {
+  const cardId = req.params.cardId;
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
+    const paymentMethod = await stripe.paymentMethods.detach(cardId);
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
+exports.postEditCard = async (req, res, next) => {
+  const cardId = req.params.cardId;
+  const errors = validationResult(req);
+  if (!errors.isEmpty())
+    return res.status(422).json({ message: 'Vaildation Error' });
+  const { Nickname } = req.body;
+  try {
+    req.user.customer.paymentMethods.forEach((card) => {
+      if (card._id == cardId) {
+        card.CardName = Nickname;
+      }
+    });
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+    logger(error);
+    return;
+  }
+};
+
+exports.getOrderDetails = async (req, res, next) => {
+  const orderId = req.params.orderId;
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      'orderUpdate.failed': { $eq: null },
+      customer: req.user._id,
+    });
+    if (!order) {
+      throw new Error('Order Not Found');
+    }
+
+    const orderData = order.toObject();
+    for (item in orderData.items) {
+      const itemData = await Product.findById(orderData.items[item].itemId);
+
+      orderData.items[item] = {
+        ...orderData.items[item],
+        imageUri: itemData.imageUrls[0],
+        title: itemData.title,
+      };
+    }
+    res.status(200).json({ message: 'Success', order: orderData });
+  } catch (error) {
+    logger(error);
+    if (error.message == 'Order Not Found') {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    res.status(500).json({ message: error.message });
+    return;
+  }
+};
+
+exports.getOrders = async (req, res, next) => {
+  const type = req.params.type;
+  if (!type) {
+    return res.status(422).json({ message: 'Vaildation Error' });
+  }
+  try {
+    let orders;
+
+    switch (type) {
+      case 'all':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          customer: req.user._id,
+        });
+        break;
+      case 'to-pay':
+        orders = await Order.find({
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': null,
+          'orderUpdate.cancelled': { $eq: null },
+          customer: req.user._id,
+        });
         break;
       case 'processing':
         orders = await Order.find({
@@ -583,7 +830,7 @@ exports.getOrders = async (req, res, next) => {
           'orderUpdate.cancelled': { $eq: null },
           isDelivery: false,
           customer: req.user._id,
-        }).sort({ _id: -1 });
+        });
         break;
       case 'shipped':
         orders = await Order.find({
@@ -637,7 +884,7 @@ exports.getOrders = async (req, res, next) => {
         orders = await Order.find({
           'orderUpdate.failed': { $eq: null },
           customer: req.user._id,
-        }).sort({ _id: -1 });
+        });
         break;
     }
 
@@ -698,38 +945,53 @@ exports.getOrders = async (req, res, next) => {
   }
 };
 
-exports.getSpecificOrder = async (req, res) => {
-  try{
-  const order = await Order.findById(req.params.orderId);
-  // console.log(order);
-  res.status(200).json({"message": "Success", "order": order});
-  } catch (error){
-    console.log(error);
-  }
-}
+// exports.getProducts = async (req, res, next) => {
+//   Product.find().populate({ path: 'farmer', populate: { path: 'farmer' } })
+//     .then((products) => {
+//       const dataToSend = [];
+
+//       for (let prod of products) {
+//         const data = {};
+//         data['_id'] = prod._id;
+//         data['title'] = prod.title;
+//         data['imageUrl'] = prod.imageUrls[0];
+//         data['price'] = prod.price;
+//         data['overallRating'] = prod.overallRating;
+//         data['unit'] = prod.unit;
+//         data['farmer'] = prod.farmer;
+//         data['description'] = prod.description;
+//         data['likes'] = prod.likes;
+//         dataToSend.push(data);
+//       }
+
+//       res.status(200).send({ message: 'success', products: dataToSend });
+//     })
+//     .catch((err) => {
+//       res.status(500).send(err);
+//     });
+// };
+
 exports.postLike = async (req, res, next) => {
-  const id=req.params.productId;
-  console.log(req.body.newLike)
-  const {method}=req.body;
+  const id = req.params.productId;
+  console.log(req.body.newLike);
+  const { method } = req.body;
   const userEmail = req.user.email;
-  const product=await Product.findById(id);
+  const product = await Product.findById(id);
   if (!product) {
-   return res.status(404).json({ message: 'Product not found' });
- }
- const likes = new Set(product.likes);
- if (method === 'add') {
-   likes.add(userEmail);
- } else if (method === 'remove') {
-   likes.delete(userEmail);
- } else {
-   return res.status(400).json({ message: 'Invalid method' });
- }
- product.likes = Array.from(likes);
- await product.save();
- res.json({message:'Success saved the Like'})
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  const likes = new Set(product.likes);
+  if (method === 'add') {
+    likes.add(userEmail);
+  } else if (method === 'remove') {
+    likes.delete(userEmail);
+  } else {
+    return res.status(400).json({ message: 'Invalid method' });
+  }
+  product.likes = Array.from(likes);
+  await product.save();
+  res.json({ message: 'Success saved the Like' });
 };
-
-
 
 exports.getProducts = async (req, res, next) => {
   const DEFAULT_QUANTITY = 1;
@@ -740,8 +1002,8 @@ exports.getProducts = async (req, res, next) => {
   try {
     const userEmail = req.user.email;
     const user = await User.findOne({ email: userEmail });
-    const isFarmer = user.accessLevel === "farmer";
-    const products = await Product.find({ status: "Live" });
+    const isFarmer = user.accessLevel === 'farmer';
+    const products = await Product.find({ status: 'Live' });
 
     const productDetails = await Promise.all(
       products.map(async (product) => {
@@ -816,10 +1078,10 @@ exports.getProducts = async (req, res, next) => {
     );
     const sortedResult = cheaperProducts.concat(expensiveProducts);
 
-    res.json(sortedResult);
+    res.status(200).json({message:'Success',mainPageProducts:sortedResult});
   } catch (error) {
     console.error(error);
-    res.status(500).send("Server Error! something is wrong");
+    res.status(500).json({message:'Unsuccessful'});
   }
 };
 
@@ -829,7 +1091,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const user = await User.findOne({ email: userEmail });
     const todayDate = new Date();
     const products = await Product.find({
-      status: "Live",
+      status: 'Live',
       dateAdded: {
         $gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
       },
@@ -855,13 +1117,13 @@ exports.getSocialProducts = async (req, res, next) => {
 
     const topselling = await Order.aggregate([
       {
-        $unwind: "$items",
+        $unwind: '$items',
       },
       {
         $group: {
-          _id: "$items.itemId",
+          _id: '$items.itemId',
           sum: {
-            $sum: "$items.qty",
+            $sum: '$items.qty',
           },
         },
       },
@@ -874,7 +1136,7 @@ exports.getSocialProducts = async (req, res, next) => {
         $group: {
           _id: null,
           top_selling_products: {
-            $push: "$_id",
+            $push: '$_id',
           },
         },
       },
@@ -902,35 +1164,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const followingProducts = await Product.find({ farmer: { $in: likes } });
 
     const productsWithImageUrl = await Promise.all(
-      followingProducts.map(async(product) => {
-      const farmer =await User.findById(product.farmer);
-       return{
-        _id: product._id,
-        price: product.price,
-        title: product.title,
-        farmerName:farmer.fname,
-        imageUrl: product.imageUrls[0],
-        overallRating: product.overallRating,
-        unit: product.unit,
-        likes: product.likes,
-        publicUrl: product.publicUrl,
-       }
-    })
-    );
-  
-    // const threePartIndex = Math.ceil(productsWithImageUrl.length / 3);
-    // const thirdPart = productsWithImageUrl.splice(-threePartIndex);
-    // const secondPart = productsWithImageUrl.splice(-threePartIndex);
-    // const firstPart = productsWithImageUrl;
-   
-   const famousProducts=await Product.aggregate([
-      { $match: { status: 'Live', likes: { $exists: true } } },
-      { $project: { _id: 1, price: 1, farmer: 1, imageUrls: 1, overallRating: 1, title: 1, unit: 1, publicUrl: 1,likes:1, likesCount: { $size: '$likes' } } },
-      { $sort: { likesCount: -1 } }
-    ]);
-
-    const allFamousProducts = await Promise.all(
-       famousProducts.map(async (product) => {
+      followingProducts.map(async (product) => {
         const farmer = await User.findById(product.farmer);
         return {
           _id: product._id,
@@ -939,32 +1173,97 @@ exports.getSocialProducts = async (req, res, next) => {
           farmerName: farmer.fname,
           imageUrl: product.imageUrls[0],
           overallRating: product.overallRating,
-          unit:product.unit,
-          likes:product.likes,
-          likeCount:product.likesCount,
-          publicUrl:product.publicUrl,
+          unit: product.unit,
+          likes: product.likes,
+          publicUrl: product.publicUrl,
         };
       })
     );
 
-    const section = ["Recently Added","Following","Top Selling Products","Famous Products"];
-    const data = [recentlyAdded,productsWithImageUrl,topSellingProducts,allFamousProducts];
+    // const threePartIndex = Math.ceil(productsWithImageUrl.length / 3);
+    // const thirdPart = productsWithImageUrl.splice(-threePartIndex);
+    // const secondPart = productsWithImageUrl.splice(-threePartIndex);
+    // const firstPart = productsWithImageUrl;
+
+    const famousProducts = await Product.aggregate([
+      { $match: { status: 'Live', likes: { $exists: true } } },
+      {
+        $project: {
+          _id: 1,
+          price: 1,
+          farmer: 1,
+          imageUrls: 1,
+          overallRating: 1,
+          title: 1,
+          unit: 1,
+          publicUrl: 1,
+          likes: 1,
+          likesCount: { $size: '$likes' },
+        },
+      },
+      { $sort: { likesCount: -1 } },
+    ]);
+
+    const allFamousProducts = await Promise.all(
+      famousProducts.map(async (product) => {
+        const farmer = await User.findById(product.farmer);
+        return {
+          _id: product._id,
+          price: product.price,
+          title: product.title,
+          farmerName: farmer.fname,
+          imageUrl: product.imageUrls[0],
+          overallRating: product.overallRating,
+          unit: product.unit,
+          likes: product.likes,
+          likeCount: product.likesCount,
+          publicUrl: product.publicUrl,
+        };
+      })
+    );
+
+    const section = [
+      'Recently Added',
+      'Following',
+      'Top Selling Products',
+      'Famous Products',
+    ];
+    const data = [
+      recentlyAdded,
+      productsWithImageUrl,
+      topSellingProducts,
+      allFamousProducts,
+    ];
     const dataOfProducts = [];
 
     for (const index in section) {
       const dataP = {};
       const showSection = data[index].length > 0 ? true : false;
-      dataP["title"] = section[index]==null?null:section[index];
-      dataP["data"] = data[index];
-      dataP["showSection"] = showSection;
+      dataP['title'] = section[index] == null ? null : section[index];
+      dataP['data'] = data[index];
+      dataP['showSection'] = showSection;
       // dataP["horizontalScroll"]=section[index]==null?false:true;
       // console.log(dataP);
       dataOfProducts.push(dataP);
     }
- 
+
     res
       .status(200)
-      .json({ message: "Success", socialProducts: dataOfProducts });
+      .json({ message: 'Success', socialProducts: dataOfProducts });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.getFollowingProducts = async (req, res, next) => {
+  res.send({ message: 'success' });
+};
+
+exports.getSpecificOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+    // console.log(order);
+    res.status(200).json({ message: 'Success', order: order });
   } catch (error) {
     console.log(error);
   }

@@ -12,6 +12,11 @@ const productSchema = new Schema({
     default: 'Quarantined',
     enum: ['Quarantined', 'Live', 'Paused', 'Deleted'],
   },
+  farmerAvailable: {
+    type: Boolean,
+    required: true,
+    default: true,
+  },
   description: {
     type: String,
     required: true,
@@ -71,6 +76,10 @@ const productSchema = new Schema({
     type: Number,
     required: true,
     min: 0,
+  },
+  likes:{
+    type:[String],
+    min:null
   },
 });
 module.exports = mongoose.model('Product', productSchema);
