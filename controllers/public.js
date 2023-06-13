@@ -15,6 +15,7 @@ exports.getProduct = async (req, res, next) => {
       ...product._doc,
       farmerName: farmer.fname,
       farmerImage: farmer.profilePicUrl,
+      farmerDeliveryCharge: farmer.deliveryCharge,
     };
     res.status(200).json({ message: 'Success', product: data });
   } catch (err) {

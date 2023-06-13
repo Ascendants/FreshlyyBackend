@@ -270,10 +270,14 @@ async function clearFundsForOrder(session, date, report) {
             break;
           }
         }
+
         await User.findByIdAndUpdate(order.customer, {
           $inc: { 'customer.loyaltyPoints': Math.floor(totalPayment / 100) },
         }).session(session);
-        if (newLoyaltyLevel.name != existingLoyaltyLevel.name) {
+        if (
+          newLoyaltyLevel &&
+          newLoyaltyLevel.name != existingLoyaltyLevel.name
+        ) {
           const code = await generateCouponCode();
           const gift = new Coupon({
             cCode: code,

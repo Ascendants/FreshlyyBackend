@@ -1613,12 +1613,13 @@ exports.getProduct = async (req, res, next) => {
       break;
     }
   }
-  console.log(product.isWishListed);
+
   const farmer = await User.findOne(product.farmer);
   const data = {
     ...product,
     farmerName: farmer.fname,
     farmerImage: farmer.profilePicUrl,
+    farmerDeliveryCharge: farmer.farmer.deliveryCharge,
   };
   res.status(200).json({ message: 'Success', product: data });
 };
@@ -1650,7 +1651,7 @@ exports.postUpdatePushToken = async (req, res, next) => {
 
 exports.getFarmerProducts = async (req, res, next) => {
   try {
-    const user = await User.findOne({ email: req.params.farmerEmail });
+    const user = await User.findById(req.params.farmerId);
     const userData = {
       farmerId: user._id,
       farmerName: user.fname + ' ' + user.lname,
@@ -1863,6 +1864,9 @@ exports.postLocation = async (req, res) => {
       latitude: req.body.latitude,
     };
     req.user.customer.locations.push(location);
+    if (req.user.customer.slctdLocation == null) {
+      req.user.customer.slctdLocation = location;
+    }
     await req.user.save();
 
     res.status(200).json({ message: 'Success' });

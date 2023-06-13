@@ -20,35 +20,21 @@ exports.getHello = async (req, res, next) => {
   res.status(200).json({ message: 'Hello' });
 };
 
-//Geting all the farmer's dashboard data
-// exports.getDashboard = async (req, res, next) => {
-// const data = {
-// 	fname: 'Nadun',
-// 	lname: 'Fernando',
-// 	imageUrl:
-// 		'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2Fkom.jpg?alt=media&token=49a88f0c-ab79-4d84-8ddb-ada16a2b0101',
-// };
-// const orders = await Order.find({ farmer: req.user._id }); //gives all orders belonging to farmer;
-// const products = await Product.find({ farmer: req.user._id });
-// res.status(200).json({ message: 'Success', user: req.user });
-
-// };
-
 exports.getDashboard = async (req, res, next) => {
   const user = {
     fname: req.user.fname,
     lname: req.user.lname,
     totalEarnings: req.user.farmer.accTotalEarnings,
-    // notifications,
+    notifications: false,
     profilePicUrl: req.user.profilePicUrl,
   };
 
-  // const notifications = await Notification.countDocuments({
-  //   user: req.user._id,
-  //   read: null,
-  //   customer: true,
-  // });
-  // user.notifications = notifications ? true: false;
+  const notifications = await Notification.countDocuments({
+    user: req.user._id,
+    read: null,
+    customer: false,
+  });
+  user.notifications = notifications ? true : false;
 
   const liveProducts = await Product.countDocuments({
     farmer: req.user._id,
@@ -1128,7 +1114,6 @@ exports.getFarmerReports = async (req, res, next) => {
         'date.month': targetMonth,
         'date.year': targetYear,
       });
-
       const totalEarnings = invoice ? invoice.totalEarnings : 0;
       const date = new Date();
       date.setMonth(targetMonth - 1);
@@ -1213,17 +1198,16 @@ exports.getFarmerReports = async (req, res, next) => {
     }
     //console.log(message);
     const farmer = await User.findOne({
-      farmerEmail: userEmail,
+      email: userEmail,
     });
-    const farmerId = farmer._id;
-    Product.find({ farmer: farmerId, status: 'Live' })
+    Product.find({ farmer: farmer._id, status: 'Live' })
       .sort({ overallRating: -1 })
       .exec(async (err, products) => {
         if (err) {
           console.error(err);
           return;
         }
-
+        console.log(products);
         if (products.length === 0) {
           console.log('No products found for the selected farmer.');
           return;
@@ -1381,7 +1365,7 @@ exports.getFarmerReports = async (req, res, next) => {
 
             // console.log(titles);
             // console.log(colors);
-            res.status(200).json({
+            return res.status(200).json({
               message: 'Success Reports path',
               barchart: monthlyIncomes,
               months: months,

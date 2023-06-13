@@ -127,6 +127,11 @@ const userSchema = new Schema({
       },
       saleLocation: {
         type: Location,
+        default: {
+          latitude: 6.841454,
+          longitude: 79.964708,
+          name: 'My Warehouse',
+        },
       },
       followers: {
         type: [ObjectId],

@@ -44,7 +44,7 @@ router.get('/social-corner', customerController.getSocialProducts);
 
 router.get('/selected-location/', customerController.getLocations);
 
-router.get('/farmerDetail/:farmerEmail', customerController.getFarmerProducts);
+router.get('/farmerDetail/:farmerId', customerController.getFarmerProducts);
 
 router.get('/orderDetail/:orderId', customerController.getOrderReviewDetails);
 
@@ -70,10 +70,6 @@ router.post('/delete-location/:index', customerController.deleteLocation);
 router.get('/locations/', customerController.getLocations);
 
 router.post('/select-location/', customerController.postSelectLocation);
-
-router.get('/support-ticket/:id', farmerController.getSupportTicket);
-
-router.get('/support-ticket/:id', farmerController.getSupportTicket);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -104,5 +100,25 @@ router.get('/product/:purl', customerController.getProduct);
 router.post('/reset-push-token', customerController.postResetPushToken);
 
 router.post('/update-push-token', customerController.postUpdatePushToken);
+
+router.get('/wishlist/', customerController.getWishList);
+
+router.post('/wishList/add', customerController.postWishListt);
+
+router.get('/cart/', customerController.getCart);
+
+router.post('/cart/add', customerController.postCart);
+
+router.post('/add-all-to-cart', customerController.addAllToCart);
+
+router.post('/cart/edit', customerController.postEditCart);
+
+router.post('/cart/delete/:productId', customerController.postDeleteCartItem);
+
+router.get('/get-support-tickets', customerController.getTickets);
+
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
+
+router.post('/support-ticket', farmerController.supportTicket);
 
 module.exports = router;
