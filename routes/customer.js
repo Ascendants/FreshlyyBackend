@@ -1,75 +1,77 @@
-const express = require("express");
+const express = require('express');
 
-const customerController = require("../controllers/customer");
-const farmerController = require("../controllers/farmer");
-const authController = require("../controllers/auth");
+const customerController = require('../controllers/customer');
+const farmerController = require('../controllers/farmer');
+const authController = require('../controllers/auth');
 
 const router = express.Router();
 
-const { body } = require("express-validator");
+const { body } = require('express-validator');
 
-router.use("*", authController.checkPreAuth);
-router.post("/signup", customerController.signUp);
-router.use("*", authController.checkCommonAuth);
+router.use('*', authController.checkPreAuth);
+router.post('/signup', customerController.signUp);
+router.use('*', authController.checkCommonAuth);
 
 //router.use('*',customerController.checkSignupCustomer);
 
-router.post("/place-order/", customerController.postOrder);
+router.post('/place-order/', customerController.postOrder);
 
-router.post("/payment/", customerController.postPayment);
+router.post('/payment/', customerController.postPayment);
 
-router.post("/like/:productId", customerController.postLike);
+router.post('/like/:productId', customerController.postLike);
 
-router.get("/get-payment-intent", customerController.getPaymentIntent);
+router.get('/get-payment-intent', customerController.getPaymentIntent);
 
-router.get("/get-card-setup-intent", customerController.getCardSetupIntent);
+router.get('/get-card-setup-intent', customerController.getCardSetupIntent);
 
 //testing route
 router.get(
-  "/create-stripe-customer",
+  '/create-stripe-customer',
   customerController.getCreateStripeCustomer
 );
 
-router.get("/create-stripe-account", customerController.getCreateStripeAccount);
+router.get('/create-stripe-account', customerController.getCreateStripeAccount);
 
-router.get("/cart/", customerController.getCart);
+router.get('/cart/', customerController.getCart);
 
-router.get("/cards/", customerController.getCards);
+router.get('/cards/', customerController.getCards);
 
-router.get("/dashboard", customerController.getDashboard);
+router.get('/dashboard', customerController.getDashboard);
 
-router.get("/mainpage", customerController.getProducts);
+router.get('/mainpage', customerController.getProducts);
 
-router.get("/social-corner", customerController.getSocialProducts);
+router.get('/social-corner', customerController.getSocialProducts);
 
-router.get("/selected-location/", customerController.getLocation);
+router.get('/selected-location/', customerController.getLocations);
 
-router.get("/farmerDetail/:farmerEmail", customerController.getFarmerProducts);
+router.get('/farmerDetail/:farmerEmail', customerController.getFarmerProducts);
 
-router.get("/orderDetail/:orderId", customerController.getOrderReviewDetails);
+router.get('/orderDetail/:orderId', customerController.getOrderReviewDetails);
 
-router.get("/followDetail/", customerController.getFarmers);
+router.get('/followDetail/', customerController.getFarmers);
 
-router.post("/follow/:farmerId", customerController.follow);
+router.post('/follow/:farmerId', customerController.follow);
 
-router.post("/unfollow/:farmerId", customerController.unfollow);
+router.post('/unfollow/:farmerId', customerController.unfollow);
 
-router.get("/cards/", customerController.getCards);
+router.get('/cards/', customerController.getCards);
 
 router.get(
-  "/reportFarmer/:farmerId",
+  '/reportFarmer/:farmerId',
   customerController.getReportFarmerDetails
 );
 
-//router.post("/sendLocation/", customerController.postLocation);
+router.post('/sendLocation/', customerController.postLocation);
 
 //router.post("/deleteLocation/", customerController.deleteLocation);
 
-router.get("/selected-location/", customerController.getLocation);
+router.get('/locations/', customerController.getLocations);
 
-router.get("/support-ticket/:id", farmerController.getSupportTicket);
+router.post('/select-location/', customerController.postSelectLocation);
 
-router.get("/support-ticket/:id", farmerController.getSupportTicket);
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
+
+router.get('/support-ticket/:id', farmerController.getSupportTicket);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
@@ -78,27 +80,27 @@ const cardTypes = {
   amex: /^3[47][0-9]{13}$/,
 };
 
-router.delete("/delete-card/:cardId", customerController.deleteRemoveCard);
+router.delete('/delete-card/:cardId', customerController.deleteRemoveCard);
 
-router.post("/cancel-order/:orderId", customerController.postCancelOrder);
-router.post("/confirm-pickup/:orderId", customerController.postPickupOrder);
+router.post('/cancel-order/:orderId', customerController.postCancelOrder);
+router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
 
-router.get("/get-order/:orderId", customerController.getOrderDetails);
-router.get("/get-orders/:type", customerController.getOrders);
+router.get('/get-order/:orderId', customerController.getOrderDetails);
+router.get('/get-orders/:type', customerController.getOrders);
 
-router.get("/getSpecificOrder/:orderId", customerController.getSpecificOrder);
+router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
 
-router.get("/notifications", customerController.getNotifications);
+router.get('/notifications', customerController.getNotifications);
 
-router.get("/product/:purl", customerController.getProduct);
+router.get('/product/:purl', customerController.getProduct);
 
-router.post("/reset-push-token", customerController.postResetPushToken);
+router.post('/reset-push-token', customerController.postResetPushToken);
 
-router.post("/update-push-token", customerController.postUpdatePushToken);
-router.get("/product/:purl", customerController.getProduct);
+router.post('/update-push-token', customerController.postUpdatePushToken);
+router.get('/product/:purl', customerController.getProduct);
 
-router.post("/reset-push-token", customerController.postResetPushToken);
+router.post('/reset-push-token', customerController.postResetPushToken);
 
-router.post("/update-push-token", customerController.postUpdatePushToken);
+router.post('/update-push-token', customerController.postUpdatePushToken);
 
 module.exports = router;

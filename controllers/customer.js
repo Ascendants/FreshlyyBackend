@@ -1,20 +1,20 @@
-const Product = require("../models/Product");
-const { validationResult } = require("express-validator");
-const { logger } = require("../util/logger");
-const User = require("../models/User");
-const Order = require("../models/Order");
-const mongoose = require("mongoose");
-const moment = require("moment");
-const { ObjectId } = require("mongodb");
-const cron = require("node-cron");
-const SupportTicket = require("../models/SupportTicket");
-const Notification = require("../models/Notification");
+const Product = require('../models/Product');
+const { validationResult } = require('express-validator');
+const { logger } = require('../util/logger');
+const User = require('../models/User');
+const Order = require('../models/Order');
+const mongoose = require('mongoose');
+const moment = require('moment');
+const { ObjectId } = require('mongodb');
+const cron = require('node-cron');
+const SupportTicket = require('../models/SupportTicket');
+const Notification = require('../models/Notification');
 const {
   sendOrderConfirmedNotifs,
   sendOrderCancelledNotifs,
   sendOrderPickedUpNotifs,
   sendLowStockLevelNotifs,
-} = require("./notifications");
+} = require('./notifications');
 
 exports.checkSignupCustomer = (req, res, next) => {
   const email = req.userEmail;
@@ -28,8 +28,8 @@ exports.signUp = async (req, res, next) => {
     // Check if required fields are empty
     if (!FirstName || !LastName || !dob || !nic || !gender || !address) {
       return res.status(400).json({
-        message: "Unsuccessful",
-        error: "Please fill all the necessary details for signup",
+        message: 'Unsuccessful',
+        error: 'Please fill all the necessary details for signup',
       });
     }
     //Validate date of birth format
@@ -37,31 +37,31 @@ exports.signUp = async (req, res, next) => {
     const isValid = !isNaN(date.getTime()) && date.toISOString() === dob;
     if (isValid) {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       console.log(formattedDate);
     } else {
       return res
         .status(400)
-        .json({ message: "Unsuccessful", error: "Invalid Date" });
+        .json({ message: 'Unsuccessful', error: 'Invalid Date' });
     }
 
     const nicRegex = /^([0-9]{9}[x|X|v|V]|[0-9]{12})$/;
     if (!nicRegex.test(nic)) {
       return res.status(400).json({
-        message: "Unsuccessful",
-        error: "Please enter a valid NIC number",
+        message: 'Unsuccessful',
+        error: 'Please enter a valid NIC number',
       });
     }
-    if (gender === "Male") {
+    if (gender === 'Male') {
       profilePic =
-        "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FmaleProPic.png?alt=media&token=84b9fbf6-47f8-4b38-b691-678c72be079e";
+        'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FmaleProPic.png?alt=media&token=84b9fbf6-47f8-4b38-b691-678c72be079e';
     } else {
       profilePic =
-        "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56";
+        'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56';
     }
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     const stripeCustomer = await stripe.customers.create({
       email: email,
     });
@@ -77,7 +77,7 @@ exports.signUp = async (req, res, next) => {
       bAddress: address,
       profilePicUrl: {
         imageUrl: profilePic,
-        placeholder: "LJK-8|%2?^IoF}oft9odEPM{Iqt7",
+        placeholder: 'LJK-8|%2?^IoF}oft9odEPM{Iqt7',
       },
       customer: {
         cart: [],
@@ -91,57 +91,57 @@ exports.signUp = async (req, res, next) => {
       },
       stripeId: stripeCustomer.id,
     });
-    if (req.body.accessLevel === "Farmer") {
+    if (req.body.accessLevel === 'Farmer') {
       newUser.farmer = {
         occupation: req.body.Occupation,
-        hasVehicle: req.body.hasVehicle == "Has a vehicle to deliver",
+        hasVehicle: req.body.hasVehicle == 'Has a vehicle to deliver',
         maxDeliDistance: req.body.maxDeliDistance,
-        nicUrl: "NULL",
+        nicUrl: 'NULL',
         deliveryCharge: req.body.delCharge,
-        status: "Quarantined",
+        status: 'Quarantined',
       };
     }
     newUser.save((err, savedUser) => {
       if (err) {
         if (err.code === 11000) {
-          console.error("Error-", err);
+          console.error('Error-', err);
           return res.status(500).json({
-            message: "Unsuccessful",
+            message: 'Unsuccessful',
             error:
-              "User already exists. Please try again with a new email / NIC",
+              'User already exists. Please try again with a new email / NIC',
           });
         }
         console.log(err);
-        return res.status(500).json({ message: "Unsuccessful" });
+        return res.status(500).json({ message: 'Unsuccessful' });
       }
-      return res.status(200).json({ message: "Success", email: email });
+      return res.status(200).json({ message: 'Success', email: email });
     });
   } catch (error) {
     // Return an error message if the token is invalid or expired
-    console.log("Error", error);
+    console.log('Error', error);
   }
 };
 
 const cancelOrder = async (orderId) => {
   if (!orderId) {
-    return { status: 422, message: "Validation Error" };
+    return { status: 422, message: 'Validation Error' };
   }
-  const stripe = require("stripe")(process.env.STRIPE_SECRET);
+  const stripe = require('stripe')(process.env.STRIPE_SECRET);
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
     const order = await Order.findById(orderId);
     if (!order) {
-      return { status: 404, message: "Order not found" };
+      return { status: 404, message: 'Order not found' };
     }
     if (order.orderUpdate.processed != null) {
-      return { status: 403, message: "Not possible to cancel at this moment" };
+      return { status: 403, message: 'Not possible to cancel at this moment' };
     }
     if (order.orderUpdate.cancelled != null) {
-      return { status: 403, message: "Already Cancelled" };
+      return { status: 403, message: 'Already Cancelled' };
     }
     if (order.orderUpdate.failed != null) {
-      return { status: 403, message: "Failed Order. No need to cancel." };
+      return { status: 403, message: 'Failed Order. No need to cancel.' };
     }
     for (item of order.items) {
       const result = await Product.findOneAndUpdate(
@@ -154,18 +154,18 @@ const cancelOrder = async (orderId) => {
         { new: true, session: session }
       );
       if (!result) {
-        throw new Error("Failed to update product quantity");
+        throw new Error('Failed to update product quantity');
       }
     }
     for (let i in order.payment) {
-      if (order.payment[i].status == "Failed") {
+      if (order.payment[i].status == 'Failed') {
         continue;
       }
-      if (order.payment[i].type == "Coupon") {
+      if (order.payment[i].type == 'Coupon') {
         //coupon management
-      } else if (order.payment[i].type == "COD") {
-        order.payment[i].status = "Refunded";
-      } else if (order.payment[i].type == "Card") {
+      } else if (order.payment[i].type == 'COD') {
+        order.payment[i].status = 'Refunded';
+      } else if (order.payment[i].type == 'Card') {
         let refund;
         try {
           refund = await stripe.refunds.create({
@@ -174,8 +174,8 @@ const cancelOrder = async (orderId) => {
         } catch (error) {
           logger(error.message);
         }
-        if (refund?.status == "succeeded") {
-          order.payment[i].status = "Refunded";
+        if (refund?.status == 'succeeded') {
+          order.payment[i].status = 'Refunded';
         } else {
           //notify admin of the failed refund and ask to do manually
         }
@@ -185,14 +185,14 @@ const cancelOrder = async (orderId) => {
     await order.save({ session: session });
     const customer = await User.findById(order.customer);
     const farmer = await User.findById(order.farmer);
-    let reason = "customer";
+    let reason = 'customer';
     if (order.orderUpdate.payment == null) {
-      reason = "payment";
+      reason = 'payment';
     }
     await sendOrderCancelledNotifs(farmer, customer, order, reason);
     await session.commitTransaction();
     await session.endSession();
-    return { status: 200, message: "Success" };
+    return { status: 200, message: 'Success' };
   } catch (error) {
     await session.abortTransaction();
     await session.endSession();
@@ -213,42 +213,42 @@ exports.getDashboard = async (req, res, next) => {
     };
     const toPay = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.payment": null,
-      "orderUpdate.cancelled": { $eq: null },
-      "orderUpdate.failed": { $eq: null },
+      'orderUpdate.payment': null,
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.failed': { $eq: null },
     });
     const toProcess = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.failed": { $eq: null },
-      "orderUpdate.cancelled": { $eq: null },
-      "orderUpdate.payment": { $ne: null },
-      "orderUpdate.processed": null,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': null,
     });
     const toShip = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.failed": { $eq: null },
-      "orderUpdate.cancelled": { $eq: null },
-      "orderUpdate.payment": { $ne: null },
-      "orderUpdate.processed": { $ne: null },
-      "orderUpdate.shipped": null,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.shipped': null,
       isDelivery: true,
     });
     const toReceive = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.failed": { $eq: null },
-      "orderUpdate.cancelled": { $eq: null },
-      "orderUpdate.payment": { $ne: null },
-      "orderUpdate.processed": { $ne: null },
-      "orderUpdate.shipped": { $ne: null },
-      "orderUpdate.delivered": null,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.shipped': { $ne: null },
+      'orderUpdate.delivered': null,
     });
     const toPickup = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.failed": { $eq: null },
-      "orderUpdate.cancelled": { $eq: null },
-      "orderUpdate.payment": { $ne: null },
-      "orderUpdate.processed": { $ne: null },
-      "orderUpdate.pickedUp": null,
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
+      'orderUpdate.payment': { $ne: null },
+      'orderUpdate.processed': { $ne: null },
+      'orderUpdate.pickedUp': null,
       isDelivery: false,
     });
     const toReview = await Order.countDocuments({
@@ -257,25 +257,25 @@ exports.getDashboard = async (req, res, next) => {
           customer: req.user._id,
           farmerRating: -1,
           deliveryRating: -1,
-          "orderUpdate.delivered": { $ne: null },
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.delivered': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
         },
         {
           customer: req.user._id,
           farmerRating: -1,
-          "orderUpdate.pickedUp": { $ne: null },
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.pickedUp': { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
         },
       ],
     });
     const all = await Order.countDocuments({
       customer: req.user._id,
-      "orderUpdate.failed": { $eq: null },
-      "orderUpdate.cancelled": { $eq: null },
+      'orderUpdate.failed': { $eq: null },
+      'orderUpdate.cancelled': { $eq: null },
     });
-    let loyaltyScheme = "None";
+    let loyaltyScheme = 'None';
     for (scheme of req.config.loyaltyScheme) {
       if (
         scheme.minPoints <= user.loyaltyPoints &&
@@ -285,14 +285,14 @@ exports.getDashboard = async (req, res, next) => {
         break;
       }
     }
-    if (loyaltyScheme !== "None") {
+    if (loyaltyScheme !== 'None') {
       user.loyaltyMin = loyaltyScheme.minPoints;
       user.loyaltyMax = loyaltyScheme.maxPoints;
       user.loyaltyMembership = loyaltyScheme.name;
     } else {
       user.loyaltyMin = 0;
       user.loyaltyMax = req.config.loyaltyScheme[0].minPoints;
-      user.loyaltyMembership = "None";
+      user.loyaltyMembership = 'None';
     }
     const notifications = await Notification.countDocuments({
       user: req.user._id,
@@ -301,7 +301,7 @@ exports.getDashboard = async (req, res, next) => {
     });
     user.notifications = notifications ? true : false;
     res.status(200).json({
-      message: "Success",
+      message: 'Success',
       user: user,
       toPay: toPay,
       toProcess: toProcess,
@@ -313,7 +313,7 @@ exports.getDashboard = async (req, res, next) => {
     });
   } catch (error) {
     logger(error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
@@ -321,7 +321,7 @@ exports.postOrder = async (req, res, next) => {
   const deliveryCharges = req.body.deliveryCharges; //retrieves what orders the customer wants to get delivered
   const session = await mongoose.startSession();
   if (!deliveryCharges) {
-    res.status(400).json({ message: "Bad Request" });
+    res.status(400).json({ message: 'Bad Request' });
     return;
   }
   console.log(deliveryCharges);
@@ -334,7 +334,7 @@ exports.postOrder = async (req, res, next) => {
       );
     });
     if (!isEveryFarmerThere) {
-      throw new Error("Validation Error");
+      throw new Error('Validation Error');
     }
     //validate if the client has correctly marked all the farmer orders' delivery preference
     const orders = [];
@@ -365,7 +365,7 @@ exports.postOrder = async (req, res, next) => {
           {
             _id: cartItem.item,
             qtyAvailable: { $gte: cartItem.qty },
-            status: "Live",
+            status: 'Live',
           },
           //filter order item and validate if the quantity is available and whether the produce listing is live
 
@@ -376,7 +376,7 @@ exports.postOrder = async (req, res, next) => {
         );
 
         if (!result) {
-          throw new Error("Not Available");
+          throw new Error('Not Available');
           //if one of them fails, abort the transaction by throwing an error
         }
         try {
@@ -407,7 +407,7 @@ exports.postOrder = async (req, res, next) => {
     await req.user.save({ session });
     //remember to clear the cart in production
     session.commitTransaction(); //change this to commit
-    res.status(200).json({ message: "Success", orderDetails: orders });
+    res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
@@ -421,22 +421,22 @@ exports.postPickupOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
     if (order.orderUpdate.processed == null) {
       return res
         .status(403)
-        .json({ message: "Not possible pickup at this moment" });
+        .json({ message: 'Not possible pickup at this moment' });
     }
     if (order.isDelivery != false) {
-      return res.status(403).json({ message: "This order will be delivered" });
+      return res.status(403).json({ message: 'This order will be delivered' });
     }
     order.orderUpdate.pickedUp = Date.now();
     await order.save();
     const customer = await User.findById(order.customer);
     const farmer = await User.findById(order.farmer);
     await sendOrderPickedUpNotifs(farmer, customer, order);
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -454,53 +454,53 @@ exports.postPayment = async (req, res, next) => {
   const saveCard = req.body.saveCard;
   const session = await mongoose.startSession();
   if (!payFrom || !orders || !Array.isArray(orders)) {
-    res.status(400).json({ message: "Bad Request" });
+    res.status(400).json({ message: 'Bad Request' });
     return;
   }
 
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
     for (let orderId of orders) {
       const order = await Order.findById(orderId).session(session);
       if (!order) {
-        return res.status(404).json({ message: "Order not found" });
+        return res.status(404).json({ message: 'Order not found' });
       }
       if (order.orderUpdate.payment != null) {
-        return res.status(403).json({ message: "Already Paid" });
+        return res.status(403).json({ message: 'Already Paid' });
       }
       if (order.orderUpdate.cancelled != null) {
-        return res.status(403).json({ message: "Order has been cancelled" });
+        return res.status(403).json({ message: 'Order has been cancelled' });
       }
       if (order.orderUpdate.failed != null) {
-        return res.status(403).json({ message: "Order has failed" });
+        return res.status(403).json({ message: 'Order has failed' });
       }
       let total = order.totalPrice + order.totalDeliveryCharge;
       let totalPaid = 0;
       for (pay of order.payment) {
-        if (pay.status == "Success") totalPaid += pay.amount;
+        if (pay.status == 'Success') totalPaid += pay.amount;
       }
       const totalToPay = total - totalPaid; //get outstanding balance to be paid
       if (totalToPay <= 0)
-        return res.status(403).json({ message: "Order already paid" });
-      if (payFrom == "cod") {
+        return res.status(403).json({ message: 'Order already paid' });
+      if (payFrom == 'cod') {
         order.payment.push({
-          type: "COD",
-          status: "Success",
+          type: 'COD',
+          status: 'Success',
           amount: totalToPay,
         });
         order.orderUpdate.payment = new Date();
       } else {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: totalToPay * 100,
-          currency: "lkr",
+          currency: 'lkr',
           customer: req.user.stripeId,
           confirm: true,
           payment_method: payFrom,
         });
         order.payment.push({
-          type: "Card",
-          status: "Success",
+          type: 'Card',
+          status: 'Success',
           amount: totalToPay,
           payRef: paymentIntent.id,
         });
@@ -508,7 +508,7 @@ exports.postPayment = async (req, res, next) => {
       }
       await order.save({ session });
     }
-    if (!saveCard && payFrom != "cod") {
+    if (!saveCard && payFrom != 'cod') {
       await stripe.paymentMethods.detach(payFrom);
     }
     for (let orderId of orders) {
@@ -516,16 +516,16 @@ exports.postPayment = async (req, res, next) => {
       if (!order) return;
       for (let i in order.items) {
         const item = await Product.findById(order.items[i].itemId);
-        order.items[i]["title"] = item.title;
-        order.items[i]["imageUrl"] = item.imageUrls[0].imageUrl;
-        order.items[i]["price"] = order.items[i].qty * order.items[i].uPrice;
+        order.items[i]['title'] = item.title;
+        order.items[i]['imageUrl'] = item.imageUrls[0].imageUrl;
+        order.items[i]['price'] = order.items[i].qty * order.items[i].uPrice;
       }
       const customer = await User.findById(order.customer);
       const farmer = await User.findById(order.farmer);
       sendOrderConfirmedNotifs(farmer, customer, order);
     }
     await session.commitTransaction();
-    res.status(200).json({ message: "Success", orderDetails: orders });
+    res.status(200).json({ message: 'Success', orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
@@ -536,15 +536,15 @@ exports.postPayment = async (req, res, next) => {
 
 exports.getPaymentIntent = async (req, res, next) => {
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: 100000,
-      currency: "lkr",
+      currency: 'lkr',
     });
     const clientSecret = paymentIntent.client_secret;
-    res.status(200).json({ message: "Success", clientSecret: clientSecret });
+    res.status(200).json({ message: 'Success', clientSecret: clientSecret });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -552,18 +552,18 @@ exports.getPaymentIntent = async (req, res, next) => {
 
 exports.getCardSetupIntent = async (req, res, next) => {
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     const setupIntent = await stripe.setupIntents.create({
       customer: req.user.stripeId,
     });
     res.json({
-      message: "Success",
+      message: 'Success',
       id: setupIntent.id,
       clientSecret: setupIntent.client_secret,
       customer: req.user.stripeId,
     });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -571,12 +571,12 @@ exports.getCardSetupIntent = async (req, res, next) => {
 
 exports.getCreateStripeCustomer = async (req, res, next) => {
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     const customer = await stripe.customers.create({ email: req.user.email });
     req.user.stripeId = customer.id;
     await req.user.save();
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -584,17 +584,17 @@ exports.getCreateStripeCustomer = async (req, res, next) => {
 
 exports.getCreateStripeAccount = async (req, res, next) => {
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
     const account = await stripe.accounts.create({
-      type: "express",
-      country: "LK",
-      email: "haritha@hasathcharu.com",
+      type: 'express',
+      country: 'LK',
+      email: 'haritha@hasathcharu.com',
     });
     req.user.stripeId = account.id;
     await req.user.save();
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -604,7 +604,7 @@ exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
   const cart = req.user?.customer?.cart.toObject();
   if (!cart) {
-    return res.status(404).json({ message: "Fail", cart: null });
+    return res.status(404).json({ message: 'Fail', cart: null });
   }
   try {
     for (let farmerItem of cart) {
@@ -620,9 +620,9 @@ exports.getCart = async (req, res, next) => {
         cartItem.farmerName = farmer.fname;
       }
     }
-    res.status(200).json({ message: "Success", cart: cart });
+    res.status(200).json({ message: 'Success', cart: cart });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -636,7 +636,7 @@ exports.postCart = async (req, res) => {
     const cart = req.user.customer.cart;
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: 'Product not found' });
     }
     //Check if the product is already in the cart
     let cartItem;
@@ -651,9 +651,9 @@ exports.postCart = async (req, res) => {
       if (quantity + cartItem.qty <= product.qtyAvailable) {
         cartItem.qty += quantity;
         req.user.save();
-        return res.status(200).json({ message: "Success" });
+        return res.status(200).json({ message: 'Success' });
       }
-      return res.status(404).json({ message: "Quantity unavailable" });
+      return res.status(404).json({ message: 'Quantity unavailable' });
     }
     let farmer = cart.find((farmer) => {
       console.log(farmer.farmer, product.farmer);
@@ -665,7 +665,7 @@ exports.postCart = async (req, res) => {
         qty: quantity,
       });
       req.user.save();
-      return res.status(200).json({ message: "Success" });
+      return res.status(200).json({ message: 'Success' });
     }
 
     cart.push({
@@ -680,9 +680,9 @@ exports.postCart = async (req, res) => {
       ],
     });
     req.user.save();
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
   }
 };
@@ -692,11 +692,11 @@ exports.postEditCart = async (req, res) => {
     let { productId, quantity } = req.body;
     quantity = parseFloat(quantity);
     if (!quantity) {
-      return res.status(404).json({ message: "Invalid quantity" });
+      return res.status(404).json({ message: 'Invalid quantity' });
     }
     const product = Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: 'Product not found' });
     }
     const inCart = req.user.customer.cart.find((farmer) => {
       return farmer.items.find((item) => {
@@ -705,16 +705,16 @@ exports.postEditCart = async (req, res) => {
     });
     console.log(inCart);
     if (!inCart) {
-      return res.status(404).json({ message: "Product not in cart" });
+      return res.status(404).json({ message: 'Product not in cart' });
     }
     if (inCart.qty + quantity > product.qtyAvailable) {
-      return res.status(404).json({ message: "Quantity unavailable" });
+      return res.status(404).json({ message: 'Quantity unavailable' });
     }
     inCart.qty += quantity;
     req.user.save();
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -724,7 +724,7 @@ exports.postDeleteCartItem = async (req, res) => {
   try {
     const { productId } = req.params;
     if (!productId) {
-      return res.status(404).json({ message: "Invalid product id" });
+      return res.status(404).json({ message: 'Invalid product id' });
     }
     const cart = req.user.customer.cart;
     let farmerIndex;
@@ -738,16 +738,16 @@ exports.postDeleteCartItem = async (req, res) => {
       });
     });
     if (farmerIndex == undefined || itemIndex == undefined) {
-      return res.status(404).json({ message: "Product not in cart" });
+      return res.status(404).json({ message: 'Product not in cart' });
     }
     cart[farmerIndex].items.splice(itemIndex, 1);
     if (cart[farmerIndex].items.length == 0) {
       cart.splice(farmerIndex, 1);
     }
     req.user.save();
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -756,15 +756,15 @@ exports.getItem = async (req, res) => {
   try {
     const { productId } = req.params;
     if (!productId) {
-      return res.status(404).json({ message: "Invalid product id" });
+      return res.status(404).json({ message: 'Invalid product id' });
     }
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: 'Product not found' });
     }
-    return res.status(200).json({ message: "Success", product: product });
+    return res.status(200).json({ message: 'Success', product: product });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -798,14 +798,14 @@ exports.addAllToCart = async (req, res) => {
     });
   }
   req.user.save();
-  return res.status(200).json({ message: "Success" });
+  return res.status(200).json({ message: 'Success' });
 };
 
 exports.getWishList = async (req, res, next) => {
   const wishList = req.user.customer.wishList.toObject();
   console.log(wishList);
   if (!wishList) {
-    res.status(200).json({ message: "Success", cart: null });
+    res.status(200).json({ message: 'Success', cart: null });
   }
   try {
     for (let farmerItem of wishList) {
@@ -821,9 +821,9 @@ exports.getWishList = async (req, res, next) => {
         wishListItem.farmerName = farmer.fname;
       }
     }
-    res.status(200).json({ message: "Success", wishList: wishList });
+    res.status(200).json({ message: 'Success', wishList: wishList });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -836,7 +836,7 @@ exports.postWishListt = async (req, res) => {
   const wishList = req.user.customer.wishList;
 
   if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+    return res.status(404).json({ message: 'Product not found' });
   }
   //Check if the product is already in the cart
   let wishListItem;
@@ -851,9 +851,9 @@ exports.postWishListt = async (req, res) => {
     if (quantity < product.qtyAvailable) {
       wishListItem.qty += quantity;
       req.user.save();
-      return res.status(200).json({ message: "Success" });
+      return res.status(200).json({ message: 'Success' });
     }
-    return res.status(404).json({ message: "Quantity unavailable" });
+    return res.status(404).json({ message: 'Quantity unavailable' });
   }
   let farmer = wishList.find((farmer) => farmer.farmer == product.farmer);
   if (farmer) {
@@ -862,7 +862,7 @@ exports.postWishListt = async (req, res) => {
       qty: quantity,
     });
     req.user.save();
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   }
 
   wishList.push({
@@ -878,7 +878,7 @@ exports.postWishListt = async (req, res) => {
   });
   console.log(req.user.customer.wishList);
   req.user.save();
-  return res.status(200).json({ message: "Success" });
+  return res.status(200).json({ message: 'Success' });
 };
 
 // exports.removeWishlistItem = async (req, res) => {
@@ -904,30 +904,30 @@ exports.postWishListt = async (req, res) => {
 // };
 exports.getCards = async (req, res, next) => {
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
     const paymentMethods = await stripe.paymentMethods.list({
       customer: req.user.stripeId,
-      type: "card",
+      type: 'card',
     });
     const cards = [];
     paymentMethods.data.forEach((method) => {
       const brand =
         method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1);
-      let cardNo = "**** **** **** " + method.card.last4;
-      if (brand == "Amex") {
-        cardNo = "**** ****** *" + method.card.last4;
+      let cardNo = '**** **** **** ' + method.card.last4;
+      if (brand == 'Amex') {
+        cardNo = '**** ****** *' + method.card.last4;
       }
       cards.push({
         cardId: method.id,
-        cardName: brand + " " + method.card.last4,
+        cardName: brand + ' ' + method.card.last4,
         cardNo: cardNo,
         cardType: brand,
-        cardExp: method.card.exp_month + "/" + (method.card.exp_year % 2000),
+        cardExp: method.card.exp_month + '/' + (method.card.exp_year % 2000),
       });
     });
-    res.status(200).json({ message: "Success", cards: cards });
+    res.status(200).json({ message: 'Success', cards: cards });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
@@ -963,10 +963,10 @@ exports.getCards = async (req, res, next) => {
 exports.deleteRemoveCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
+    const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
     const paymentMethod = await stripe.paymentMethods.detach(cardId);
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
     res.status(500).json({ message: error.message });
     logger(error);
@@ -978,7 +978,7 @@ exports.postEditCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   const errors = validationResult(req);
   if (!errors.isEmpty())
-    return res.status(422).json({ message: "Vaildation Error" });
+    return res.status(422).json({ message: 'Vaildation Error' });
   const { Nickname } = req.body;
   try {
     req.user.customer.paymentMethods.forEach((card) => {
@@ -987,7 +987,7 @@ exports.postEditCard = async (req, res, next) => {
       }
     });
     await req.user.save();
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
     res.status(500).json({ message: error.message });
     logger(error);
@@ -1000,11 +1000,11 @@ exports.getOrderDetails = async (req, res, next) => {
   try {
     const order = await Order.findOne({
       _id: orderId,
-      "orderUpdate.failed": { $eq: null },
+      'orderUpdate.failed': { $eq: null },
       customer: req.user._id,
     });
     if (!order) {
-      throw new Error("Order Not Found");
+      throw new Error('Order Not Found');
     }
 
     const orderData = order.toObject();
@@ -1017,10 +1017,10 @@ exports.getOrderDetails = async (req, res, next) => {
         title: itemData.title,
       };
     }
-    res.status(200).json({ message: "Success", order: orderData });
+    res.status(200).json({ message: 'Success', order: orderData });
   } catch (error) {
     logger(error);
-    if (error.message == "Order Not Found") {
+    if (error.message == 'Order Not Found') {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -1032,133 +1032,133 @@ exports.getOrderDetails = async (req, res, next) => {
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
   if (!type) {
-    return res.status(422).json({ message: "Vaildation Error" });
+    return res.status(422).json({ message: 'Vaildation Error' });
   }
   try {
     let orders;
 
     switch (type) {
-      case "all":
+      case 'all':
         orders = await Order.find({
-          "orderUpdate.failed": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case "to-pay":
+      case 'to-pay':
         orders = await Order.find({
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.payment": null,
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': null,
+          'orderUpdate.cancelled': { $eq: null },
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case "processing":
+      case 'processing':
         orders = await Order.find({
           $or: [
             {
-              "orderUpdate.payment": { $ne: null },
-              "orderUpdate.processed": null,
-              "orderUpdate.cancelled": null,
-              "orderUpdate.failed": null,
+              'orderUpdate.payment': { $ne: null },
+              'orderUpdate.processed': null,
+              'orderUpdate.cancelled': null,
+              'orderUpdate.failed': null,
               customer: req.user._id,
             },
             {
               isDelivery: true,
-              "orderUpdate.payment": { $ne: null },
-              "orderUpdate.processed": { $ne: null },
-              "orderUpdate.shipped": null,
-              "orderUpdate.cancelled": null,
-              "orderUpdate.failed": null,
+              'orderUpdate.payment': { $ne: null },
+              'orderUpdate.processed': { $ne: null },
+              'orderUpdate.shipped': null,
+              'orderUpdate.cancelled': null,
+              'orderUpdate.failed': null,
               customer: req.user._id,
             },
           ],
         }).sort({ _id: -1 });
         break;
-      case "to-pickup":
+      case 'to-pickup':
         orders = await Order.find({
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.payment": { $ne: null },
-          "orderUpdate.processed": { $ne: null },
-          "orderUpdate.pickedUp": null,
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.pickedUp': null,
+          'orderUpdate.cancelled': { $eq: null },
           isDelivery: false,
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case "shipped":
+      case 'shipped':
         orders = await Order.find({
           customer: req.user._id,
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.payment": { $ne: null },
-          "orderUpdate.processed": { $ne: null },
-          "orderUpdate.shipped": { $ne: null },
-          "orderUpdate.delivered": null,
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.payment': { $ne: null },
+          'orderUpdate.processed': { $ne: null },
+          'orderUpdate.shipped': { $ne: null },
+          'orderUpdate.delivered': null,
+          'orderUpdate.cancelled': { $eq: null },
         }).sort({ _id: -1 });
         break;
-      case "to-review":
+      case 'to-review':
         orders = await Order.find({
           $or: [
             {
               customer: req.user._id,
               farmerRating: -1,
               deliveryRating: -1,
-              "orderUpdate.delivered": { $ne: null },
-              "orderUpdate.failed": { $eq: null },
-              "orderUpdate.cancelled": { $eq: null },
+              'orderUpdate.delivered': { $ne: null },
+              'orderUpdate.failed': { $eq: null },
+              'orderUpdate.cancelled': { $eq: null },
             },
             {
               customer: req.user._id,
               farmerRating: -1,
-              "orderUpdate.pickedUp": { $ne: null },
-              "orderUpdate.failed": { $eq: null },
-              "orderUpdate.cancelled": { $eq: null },
+              'orderUpdate.pickedUp': { $ne: null },
+              'orderUpdate.failed': { $eq: null },
+              'orderUpdate.cancelled': { $eq: null },
             },
           ],
         }).sort({ _id: -1 });
         break;
-      case "completed":
+      case 'completed':
         orders = await Order.find({
           customer: req.user._id,
           farmerRating: { $ne: -1 },
           deliveryRating: { $ne: -1 },
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.cancelled": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $eq: null },
         }).sort({ _id: -1 });
         break;
-      case "cancelled":
+      case 'cancelled':
         orders = await Order.find({
-          "orderUpdate.failed": { $eq: null },
-          "orderUpdate.cancelled": { $ne: null },
+          'orderUpdate.failed': { $eq: null },
+          'orderUpdate.cancelled': { $ne: null },
           customer: req.user._id,
-        }).sort({ "orderUpdate.cancelled": -1 });
+        }).sort({ 'orderUpdate.cancelled': -1 });
         break;
       default:
         orders = await Order.find({
-          "orderUpdate.failed": { $eq: null },
+          'orderUpdate.failed': { $eq: null },
           customer: req.user._id,
         });
         break;
     }
 
     if (!orders) {
-      throw new Error("No Orders");
+      throw new Error('No Orders');
     }
     let orderData = [];
     orders.forEach((order) => {
-      let status = "to-pay";
+      let status = 'to-pay';
       let newOrder = false;
       if (order.orderUpdate.cancelled) {
-        status = "cancelled";
+        status = 'cancelled';
       } else if (!order.orderUpdate.payment) {
-        status = "to-pay";
+        status = 'to-pay';
       } else if (
         !order.orderUpdate.processed ||
         (order.orderUpdate.processed &&
           order.isDelivery &&
           !order.orderUpdate.shipped)
       ) {
-        status = "processing";
+        status = 'processing';
         const timeDifferenceInMinutes = moment
           .duration(moment().diff(moment(order.orderUpdate.payment)))
           .asMinutes();
@@ -1166,38 +1166,38 @@ exports.getOrders = async (req, res, next) => {
           newOrder = true;
         }
       } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
-        status = "shipped";
+        status = 'shipped';
       } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
-        status = "to-pickup";
+        status = 'to-pickup';
       } else if (
         (order.orderUpdate.delivered || order.orderUpdate.pickedUp) &&
         order.farmerRating == -1
       ) {
-        status = "to-review";
+        status = 'to-review';
       } else if (order.farmerRating != -1) {
-        status = "completed";
+        status = 'completed';
       }
       orderData.push({
         farmerName: order.farmerName,
         orderId: order._id,
         orderPlaced: order.orderUpdate.placed
-          ? moment(order.orderUpdate.placed).format("YYYY-MM-DD")
+          ? moment(order.orderUpdate.placed).format('YYYY-MM-DD')
           : null,
         orderPaid: order.orderUpdate.payment
-          ? moment(order.orderUpdate.payment).format("YYYY-MM-DD")
+          ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
           : null,
         orderCancelled: order.orderUpdate.cancelled
-          ? moment(order.orderUpdate.cancelled).format("YYYY-MM-DD")
+          ? moment(order.orderUpdate.cancelled).format('YYYY-MM-DD')
           : null,
         orderTotal: order.totalPrice + order.totalDeliveryCharge,
         status: status,
         newOrder: newOrder,
       });
     });
-    res.status(200).json({ message: "Success", orders: orderData });
+    res.status(200).json({ message: 'Success', orders: orderData });
   } catch (error) {
     logger(error);
-    if (error.message == "No Orders") {
+    if (error.message == 'No Orders') {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -1239,19 +1239,19 @@ exports.postLike = async (req, res, next) => {
   const userEmail = req.user.email;
   const product = await Product.findById(id);
   if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+    return res.status(404).json({ message: 'Product not found' });
   }
   const likes = new Set(product.likes);
-  if (method === "add") {
+  if (method === 'add') {
     likes.add(userEmail);
-  } else if (method === "remove") {
+  } else if (method === 'remove') {
     likes.delete(userEmail);
   } else {
-    return res.status(400).json({ message: "Invalid method" });
+    return res.status(400).json({ message: 'Invalid method' });
   }
   product.likes = Array.from(likes);
   await product.save();
-  res.json({ message: "Success saved the Like" });
+  res.json({ message: 'Success saved the Like' });
 };
 
 exports.getProducts = async (req, res, next) => {
@@ -1263,8 +1263,8 @@ exports.getProducts = async (req, res, next) => {
   try {
     const userEmail = req.user.email;
     const user = await User.findOne({ email: userEmail });
-    const isFarmer = user.accessLevel === "farmer";
-    const products = await Product.find({ status: "Live" });
+    const isFarmer = user.accessLevel === 'farmer';
+    const products = await Product.find({ status: 'Live' });
 
     const productDetails = await Promise.all(
       products.map(async (product) => {
@@ -1288,7 +1288,7 @@ exports.getProducts = async (req, res, next) => {
             const distanceData = await distanceResponse.json();
             console.log(distanceData);
             distanceValue = distanceData.rows[0].elements[0].distance.text;
-            distanceNum = parseFloat(distanceValue.replace("Km", "").trim());
+            distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
             totalPrice = calculateTotalPrice(
               product.price,
@@ -1342,10 +1342,10 @@ exports.getProducts = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ message: "Success", mainPageProducts: sortedResult });
+      .json({ message: 'Success', mainPageProducts: sortedResult });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unsuccessful" });
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1355,7 +1355,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const user = await User.findOne({ email: userEmail });
     const todayDate = new Date();
     const products = await Product.find({
-      status: "Live",
+      status: 'Live',
       dateAdded: {
         $gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
       },
@@ -1381,13 +1381,13 @@ exports.getSocialProducts = async (req, res, next) => {
 
     const topselling = await Order.aggregate([
       {
-        $unwind: "$items",
+        $unwind: '$items',
       },
       {
         $group: {
-          _id: "$items.itemId",
+          _id: '$items.itemId',
           sum: {
-            $sum: "$items.qty",
+            $sum: '$items.qty',
           },
         },
       },
@@ -1400,7 +1400,7 @@ exports.getSocialProducts = async (req, res, next) => {
         $group: {
           _id: null,
           top_selling_products: {
-            $push: "$_id",
+            $push: '$_id',
           },
         },
       },
@@ -1450,7 +1450,7 @@ exports.getSocialProducts = async (req, res, next) => {
     // const firstPart = productsWithImageUrl;
 
     const famousProducts = await Product.aggregate([
-      { $match: { status: "Live", likes: { $exists: true } } },
+      { $match: { status: 'Live', likes: { $exists: true } } },
       {
         $project: {
           _id: 1,
@@ -1462,7 +1462,7 @@ exports.getSocialProducts = async (req, res, next) => {
           unit: 1,
           publicUrl: 1,
           likes: 1,
-          likesCount: { $size: "$likes" },
+          likesCount: { $size: '$likes' },
         },
       },
       { $sort: { likesCount: -1 } },
@@ -1488,10 +1488,10 @@ exports.getSocialProducts = async (req, res, next) => {
     );
 
     const section = [
-      "Recently Added",
-      "Following",
-      "Top Selling Products",
-      "Famous Products",
+      'Recently Added',
+      'Following',
+      'Top Selling Products',
+      'Famous Products',
     ];
     const data = [
       recentlyAdded,
@@ -1504,9 +1504,9 @@ exports.getSocialProducts = async (req, res, next) => {
     for (const index in section) {
       const dataP = {};
       const showSection = data[index].length > 0 ? true : false;
-      dataP["title"] = section[index] == null ? null : section[index];
-      dataP["data"] = data[index];
-      dataP["showSection"] = showSection;
+      dataP['title'] = section[index] == null ? null : section[index];
+      dataP['data'] = data[index];
+      dataP['showSection'] = showSection;
       // dataP["horizontalScroll"]=section[index]==null?false:true;
       // console.log(dataP);
       dataOfProducts.push(dataP);
@@ -1514,21 +1514,21 @@ exports.getSocialProducts = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ message: "Success", socialProducts: dataOfProducts });
+      .json({ message: 'Success', socialProducts: dataOfProducts });
   } catch (error) {
     console.log(error);
   }
 };
 
 exports.getFollowingProducts = async (req, res, next) => {
-  res.send({ message: "success" });
+  res.send({ message: 'success' });
 };
 
 exports.getSpecificOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId);
     // console.log(order);
-    res.status(200).json({ message: "Success", order: order });
+    res.status(200).json({ message: 'Success', order: order });
   } catch (error) {
     console.log(error);
   }
@@ -1540,7 +1540,7 @@ exports.getTickets = async (req, res, next) => {
     // const email = req.user.email;
 
     const tickets = await SupportTicket.find({ userEmail: req.user.email });
-    res.status(200).json({ message: "Success", tickets: tickets });
+    res.status(200).json({ message: 'Success', tickets: tickets });
   } catch (error) {
     console.log(error);
   }
@@ -1558,7 +1558,7 @@ exports.getNotifications = async (req, res, next) => {
         id: notification._id,
         title: notification.title,
         body: notification.body,
-        created: moment(notification.update.created).format("DD-MM-YYYY"),
+        created: moment(notification.update.created).format('DD-MM-YYYY'),
         read: notification.read,
       });
       if (notification.read == null) {
@@ -1566,20 +1566,20 @@ exports.getNotifications = async (req, res, next) => {
       }
       notification.save();
     }
-    res.status(200).json({ message: "Success", notifications: data });
+    res.status(200).json({ message: 'Success', notifications: data });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
 exports.getCheckFarmer = async (req, res, next) => {
   try {
     const farmer = await User.findById(req.user._id);
-    if (farmer.accessLevel == "Farmer") {
-      res.status(200).json({ message: "Success", farmer: true });
+    if (farmer.accessLevel == 'Farmer') {
+      res.status(200).json({ message: 'Success', farmer: true });
     } else {
-      res.status(200).json({ message: "Success", farmer: false });
+      res.status(200).json({ message: 'Success', farmer: false });
     }
   } catch (error) {
     console.log(error);
@@ -1612,31 +1612,31 @@ exports.getProduct = async (req, res, next) => {
     farmerName: farmer.fname,
     farmerImage: farmer.profilePicUrl,
   };
-  res.status(200).json({ message: "Success", product: data });
+  res.status(200).json({ message: 'Success', product: data });
 };
 
 exports.postResetPushToken = async (req, res, next) => {
   try {
-    req.user.pushToken = "null";
+    req.user.pushToken = 'null';
     await req.user.save();
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
 exports.postUpdatePushToken = async (req, res, next) => {
   try {
     if (!req.body.token) {
-      throw new Error("Token not found");
+      throw new Error('Token not found');
     }
     req.user.pushToken = req.body.token;
     req.user.save();
-    return res.status(200).json({ message: "Success" });
+    return res.status(200).json({ message: 'Success' });
   } catch (err) {
     logger(err);
-    return res.status(500).json({ message: "Something went wrong" });
+    return res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
@@ -1645,10 +1645,10 @@ exports.getFarmerProducts = async (req, res, next) => {
     const user = await User.findOne({ email: req.params.farmerEmail });
     const userData = {
       farmerId: user._id,
-      farmerName: user.fname + " " + user.lname,
+      farmerName: user.fname + ' ' + user.lname,
       farmerImage: user.profilePicUrl,
     };
-    const products = await Product.find({ status: "Live", farmer: user._id });
+    const products = await Product.find({ status: 'Live', farmer: user._id });
     const productData = [];
     for (let product of products) {
       productData.push({
@@ -1665,10 +1665,10 @@ exports.getFarmerProducts = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ message: "Success", farmer: userData, products: productData });
+      .json({ message: 'Success', farmer: userData, products: productData });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unsuccessful" });
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1676,7 +1676,7 @@ exports.getOrderReviewDetails = async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.orderId });
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
     const orderData = {
       orderId: req.params.orderId,
@@ -1690,18 +1690,18 @@ exports.getOrderReviewDetails = async (req, res) => {
     for (item in itemData) {
       const product = await Product.findById(itemData[item].itemId);
       const data = {};
-      data["uPrice"] = itemData[item].uPrice;
-      data["qty"] = itemData[item].qty;
-      data["imageUrl"] = product.imageUrls[0];
-      data["title"] = product.title;
+      data['uPrice'] = itemData[item].uPrice;
+      data['qty'] = itemData[item].qty;
+      data['imageUrl'] = product.imageUrls[0];
+      data['title'] = product.title;
       productData.push(data);
     }
     res
       .status(200)
-      .json({ message: "Success", order: orderData, product: productData });
+      .json({ message: 'Success', order: orderData, product: productData });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unsuccessful" });
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1710,14 +1710,14 @@ exports.getReportFarmerDetails = async (req, res) => {
     const farmer = await User.findOne({ _id: req.params.farmerId });
     const farmerData = {
       farmerId: farmer._id,
-      farmerName: farmer.fname + " " + farmer.lname,
+      farmerName: farmer.fname + ' ' + farmer.lname,
       farmerImage: farmer.profilePicUrl,
     };
     console.log(farmerData);
-    res.status(200).json({ message: "Success", farmer: farmerData });
+    res.status(200).json({ message: 'Success', farmer: farmerData });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unsuccessful" });
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1728,15 +1728,15 @@ exports.getFarmers = async (req, res) => {
     for (let farmer in followData) {
       const follow = await User.findById(followData[farmer]);
       const data = {};
-      data["farmerid"] = follow._id;
-      data["farmerName"] = follow.fname + " " + follow.lname;
-      data["imageUrl"] = follow.profilePicUrl;
+      data['farmerid'] = follow._id;
+      data['farmerName'] = follow.fname + ' ' + follow.lname;
+      data['imageUrl'] = follow.profilePicUrl;
       followingData.push(data);
     }
-    res.status(200).json({ message: "Success", follow: followingData });
+    res.status(200).json({ message: 'Success', follow: followingData });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Unsuccessful" });
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
 
@@ -1745,9 +1745,9 @@ exports.follow = async (req, res) => {
     req.user.customer.following.push(req.params.farmerId);
     await req.user.save();
 
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
-    res.status(500).json({ message: "Fail to add following" });
+    res.status(500).json({ message: 'Fail to add following' });
   }
 };
 
@@ -1762,39 +1762,77 @@ exports.unfollow = async (req, res) => {
     }
     console.log(index);
     if (index == -1) {
-      return res.status(200).json({ message: "Success" });
+      return res.status(200).json({ message: 'Success' });
     }
     req.user.customer.following.splice(index, 1);
     // user.customer.following.pull(req.body.farmerId);
     await req.user.save();
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Fail to Remove Following" });
+    res.status(500).json({ message: 'Fail to Remove Following' });
   }
 };
 
-exports.getLocation = async (req, res) => {
+exports.getLocations = async (req, res) => {
   try {
-    return res
-      .status(200)
-      .json({ message: "Success", location: req.user.customer.slctdLocation });
+    const locations = req.user.customer.locations.toObject();
+    const selected = req.user.customer.slctdLocation;
+    console.log(locations);
+    for (let location of locations) {
+      location.isSelected = false;
+      if (
+        location.latitude == selected.latitude &&
+        location.longitude == selected.longitude
+      ) {
+        location.isSelected = true;
+        break;
+      }
+    }
+    console.log(locations);
+    res.status(200).json({ message: 'Success', location: locations });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
+  }
+};
+
+exports.postSelectLocation = async (req, res) => {
+  try {
+    const location = req.body;
+    if (!(location?.latitude && location?.longitude && location?.name)) {
+      return res.status(400).json({ message: 'Bad Request' });
+    }
+    if (
+      req.user.customer.locations.find((l) => location.latitude == l.latitude)
+    ) {
+      console.log(req.user.customer.slctdLocation);
+      req.user.customer.slctdLocation = location;
+      await req.user.save();
+      return res.status(200).json({ message: 'Success' });
+    }
+    return res.status(404).json({ message: 'Not Found' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Fail to get Location" });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
 exports.postLocation = async (req, res) => {
   try {
-    req.user.customer.slctdLocation.name.push(req.params.locationName);
-    req.user.customer.slctdLocation.longitude.push(req.params.longitude);
-    req.user.customer.slctdLocation.latutude.push(req.params.latitude);
+    console.log('hi');
+    const location = {
+      name: req.body.LocationName,
+      longitude: req.body.longitude,
+      latitude: req.body.latitude,
+    };
+    req.user.customer.locations.push(location);
     await req.user.save();
 
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
-    res.status(500).json({ message: "Fail to add Location" });
+    console.log(error);
+    res.status(500).json({ message: 'Fail to add Location' });
   }
 };
 
@@ -1809,13 +1847,13 @@ exports.deleteLocation = async (req, res) => {
     }
     console.log(index);
     if (index == -1) {
-      return res.status(200).json({ message: "Success" });
+      return res.status(200).json({ message: 'Success' });
     }
     req.user.customer.slctdLocation.splice(index, 1);
     await req.user.save();
-    res.status(200).json({ message: "Success" });
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Fail to Remove Location" });
+    res.status(500).json({ message: 'Fail to Remove Location' });
   }
 };
