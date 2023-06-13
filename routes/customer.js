@@ -65,6 +65,8 @@ router.post('/sendLocation/', customerController.postLocation);
 
 //router.post("/deleteLocation/", customerController.deleteLocation);
 
+router.post('/delete-location/:index', customerController.deleteLocation);
+
 router.get('/locations/', customerController.getLocations);
 
 router.post('/select-location/', customerController.postSelectLocation);

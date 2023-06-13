@@ -1779,6 +1779,9 @@ exports.getLocations = async (req, res) => {
     const locations = req.user.customer.locations.toObject();
     const selected = req.user.customer.slctdLocation;
     console.log(locations);
+    if (selected == null) {
+      return res.status(200).json({ message: 'Success', location: locations });
+    }
     for (let location of locations) {
       location.isSelected = false;
       if (
@@ -1796,7 +1799,32 @@ exports.getLocations = async (req, res) => {
     res.status(500).json({ message: 'Unsuccessful' });
   }
 };
+exports.deleteLocation = async (req, res) => {
+  try {
+    const index = req.params.index;
 
+    if (index >= req.user.customer.locations.length) {
+      return res.status(400).json({ message: 'Bad Request' });
+    }
+    if (index == -1) {
+      return res.status(400).json({ message: 'Not Found' });
+    }
+    if (
+      req.user.customer.slctdLocation.latitude ==
+        req.user.customer.locations[index].latitude &&
+      req.user.customer.slctdLocation.longitude ==
+        req.user.customer.locations[index].longitude
+    ) {
+      req.user.customer.slctdLocation = null;
+    }
+    req.user.customer.locations.splice(index, 1);
+    await req.user.save();
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Fail to Remove Location' });
+  }
+};
 exports.postSelectLocation = async (req, res) => {
   try {
     const location = req.body;
@@ -1833,27 +1861,5 @@ exports.postLocation = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Fail to add Location' });
-  }
-};
-
-exports.deleteLocation = async (req, res) => {
-  try {
-    let index = -1;
-    for (let item in req.user.customer.slctdLocation) {
-      if (req.user.customer.slctdLocation.name == req.params.userId) {
-        index = slctdLocation;
-        break;
-      }
-    }
-    console.log(index);
-    if (index == -1) {
-      return res.status(200).json({ message: 'Success' });
-    }
-    req.user.customer.slctdLocation.splice(index, 1);
-    await req.user.save();
-    res.status(200).json({ message: 'Success' });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Fail to Remove Location' });
   }
 };
