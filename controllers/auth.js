@@ -30,6 +30,7 @@ exports.checkCommonAuth = async (req, res, next) => {
     const email = decodedToken.email;
     req.userEmail = email;
     req.user = await User.findOne({ email: email });
+    console.log(req.user);
     if (!req.user) {
       return res.status(404).json({
         message: 'User Not Found',

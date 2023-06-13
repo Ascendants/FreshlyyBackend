@@ -616,13 +616,17 @@ exports.getChatDetails = async (req, res) => {
     const farmerEmail = farmer.email;
     const farmerLname = farmer.lname;
     console.log(farmerEmail);
-    res.status(200).json({ message: 'Success', farmerEmail: farmerEmail, farmerLname: farmerLname });
+    res.status(200).json({
+      message: 'Success',
+      farmerEmail: farmerEmail,
+      farmerLname: farmerLname,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Something went wrong' });
     logger(error);
     return;
   }
-}
+};
 
 exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
@@ -1653,10 +1657,11 @@ exports.postResetPushToken = async (req, res, next) => {
 
 exports.postUpdatePushToken = async (req, res, next) => {
   try {
-    if (!req.body.token) {
+    if (!req.body.pushToken) {
       throw new Error('Token not found');
     }
-    req.user.pushToken = req.body.token;
+    console.log(req.body.token);
+    req.user.pushToken = req.body.pushToken;
     req.user.save();
     return res.status(200).json({ message: 'Success' });
   } catch (err) {
@@ -1836,9 +1841,9 @@ exports.deleteLocation = async (req, res) => {
     }
     if (
       req.user.customer.slctdLocation.latitude ==
-      req.user.customer.locations[index].latitude &&
+        req.user.customer.locations[index].latitude &&
       req.user.customer.slctdLocation.longitude ==
-      req.user.customer.locations[index].longitude
+        req.user.customer.locations[index].longitude
     ) {
       req.user.customer.slctdLocation = null;
     }
