@@ -255,6 +255,9 @@ async function clearFundsForOrder(session, date, report) {
             break;
           }
         }
+        if (!existingLoyaltyLevel) {
+          existingLoyaltyLevel = { name: 'None' };
+        }
         const newLoyaltyPoints =
           user.customer.loyaltyPoints + Math.floor(totalPayment / 100);
         let newLoyaltyLevel;

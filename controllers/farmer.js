@@ -200,6 +200,138 @@ exports.getDashboard = async (req, res, next) => {
     newOrderDetailsList.push(orderDetails);
   }
 
+  const toDeliver = await Order.countDocuments({
+    farmer: req.user._id,
+    isDelivery: true,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.delivered': null,
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.closed': null,
+  });
+
+  const toDeliverList = await Order.find({
+    farmer: req.user._id,
+    isDelivery: true,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.delivered': null,
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.closed': null,
+  });
+
+  const toDeliverOrdersList = [];
+
+  for (const order of toDeliverList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    toDeliverOrdersList.push(orderDetails);
+  }
+
+  const willPickup = await Order.countDocuments({
+    farmer: req.user._id,
+    isDelivery: false,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.pickedUp': null,
+    'orderUpdate.closed': null,
+  });
+
+  const willPickupList = await Order.find({
+    farmer: req.user._id,
+    isDelivery: false,
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.payment': { $ne: null },
+    'orderUpdate.processed': { $ne: null },
+    'orderUpdate.pickedUp': null,
+    'orderUpdate.closed': null,
+  });
+  const willPickupOrdersList = [];
+
+  for (const order of willPickupList) {
+    const customer = await User.findById(order.customer);
+
+    // Retrieve customer's first name and last name
+    const customerFirstName = customer.fname;
+    const customerLastName = customer.lname;
+
+    // Retrieve details of each item in the order
+    const items = order.items;
+    const itemDetails = [];
+
+    // console.log(items);
+    // return;
+
+    for (const item of items) {
+      const itemId = item.itemId;
+      const qty = item.qty;
+
+      const productId = itemId;
+      const product = await Product.findById(productId);
+
+      // Retrieve item title and unit from the product
+      const itemTitle = product.title;
+      const itemUnit = product.unit;
+
+      itemDetails.push({
+        title: itemTitle,
+        unit: itemUnit,
+        qty: qty,
+      });
+    }
+
+    // Combine all the retrieved information for the order
+    const orderDetails = {
+      customerFirstName,
+      customerLastName,
+      itemDetails,
+      orderId: order._id,
+    };
+
+    willPickupOrdersList.push(orderDetails);
+  }
   res.status(200).json({
     message: 'Success',
     user: user,
@@ -211,6 +343,10 @@ exports.getDashboard = async (req, res, next) => {
     liveProductsList,
     pendingProductsList,
     pastOrderDetailsList,
+    toDeliver,
+    toDeliverOrdersList,
+    willPickup,
+    willPickupOrdersList,
   });
 };
 
@@ -968,5 +1104,299 @@ exports.postDeleteProduct = async (req, res, next) => {
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+exports.getFarmerReports = async (req, res, next) => {
+  try {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // Adding 1 to match the JavaScript month indexing (0-11)
+    const userEmail = req.user.email;
+    const monthlyIncomes = [];
+    const months = [];
+    for (let i = 1; i <= 4; i++) {
+      //const targetDate = new Date(currentDate.getFullYear(), currentMonth - i, 1);
+      const targetYear = currentDate.getFullYear();
+      const targetMonth = currentMonth - i;
+
+      if (targetMonth <= 0) {
+        targetMonth += 12;
+        targetYear -= 1;
+      }
+      const invoice = await FarmerMonthInvoice.findOne({
+        farmerEmail: userEmail,
+        'date.month': targetMonth,
+        'date.year': targetYear,
+      });
+
+      const totalEarnings = invoice ? invoice.totalEarnings : 0;
+      const date = new Date();
+      date.setMonth(targetMonth - 1);
+      const shortMonthName = date.toLocaleString('en-US', { month: 'short' });
+      monthlyIncomes.push({
+        x: shortMonthName,
+        y: totalEarnings,
+      });
+      months.push(shortMonthName);
+    }
+    months.reverse();
+    monthlyIncomes.reverse();
+    let message;
+    const currentMonthY = monthlyIncomes[monthlyIncomes.length - 1].y; // Get the y value of the current month (May)
+    const previousMonthY = monthlyIncomes[monthlyIncomes.length - 2].y; // Get the y value of the previous month (Apr)
+
+    const words = [
+      'Great job',
+      'Keep it up',
+      'Way to go',
+      'Good work',
+      'Fantastic work',
+      'Outstanding',
+      'Wow! we are impressed',
+      'You have made quite an improvement',
+      'You are on the right track',
+    ];
+    const giveUpWords = [
+      'Hang in there',
+      "Don't give up",
+      'Keep pushing',
+      'Keep fighting!',
+      'Stay strong',
+      'Come on! You can do it!',
+    ];
+    let barChartGood = false;
+    function getRandomWord(pool) {
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      return pool[randomIndex];
+    }
+
+    if (previousMonthY > 0) {
+      const percentageChange =
+        ((currentMonthY - previousMonthY) / previousMonthY) * 100;
+      message =
+        percentageChange > 0
+          ? `${getRandomWord(
+              words
+            )}! Your income has increased by Rs.${percentageChange.toFixed(
+              2
+            )}% than the month berfore`
+          : `${getRandomWord(
+              giveUpWords
+            )} Last month income has decreased by Rs.${Math.abs(
+              percentageChange
+            ).toFixed(2)}% than the month berfore`;
+
+      if (percentageChange > 0) {
+        barChartGood = true;
+      } else {
+        barChartGood = false;
+      }
+    } else {
+      message =
+        currentMonthY > 0
+          ? `${getRandomWord(
+              words
+            )}! Your income has increased by Rs.${currentMonthY.toFixed(
+              2
+            )} than the month berfore`
+          : `${getRandomWord(
+              giveUpWords
+            )} Last month income has decreased by Rs.${Math.abs(
+              currentMonthY
+            ).toFixed(2)} than the month berfore`;
+
+      if (currentMonthY > 0) {
+        barChartGood = true;
+      } else {
+        barChartGood = false;
+      }
+    }
+    //console.log(message);
+    const farmer = await User.findOne({
+      farmerEmail: userEmail,
+    });
+    const farmerId = farmer._id;
+    Product.find({ farmer: farmerId, status: 'Live' })
+      .sort({ overallRating: -1 })
+      .exec(async (err, products) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        if (products.length === 0) {
+          console.log('No products found for the selected farmer.');
+          return;
+        }
+
+        const productDetails = await Promise.all(
+          products.map(async (product) => {
+            const farmer = await User.findById(product.farmer);
+            //console.log(farmer)
+
+            return {
+              _id: product._id,
+              price: product.price,
+              title: product.title,
+              imageUrl: product.imageUrls[0],
+              overallRating: product.overallRating,
+              unit: product.unit,
+              likes: product.likes,
+            };
+          })
+        );
+        //console.log(productDetails);
+        const pieChartData = [];
+        const titles = [];
+        const colors = [];
+
+        const previousMonth = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth() - 1,
+          1
+        );
+
+        FarmerMonthInvoice.findOne({
+          farmerEmail: req.user.email,
+          'date.month': previousMonth.getMonth() + 1,
+          'date.year': previousMonth.getFullYear(),
+        })
+          .populate('orders')
+          .exec(async (err, monthlyInvoice) => {
+            if (err) {
+              console.error(err);
+              return;
+            }
+            //console.log(monthlyInvoice);
+
+            if (!monthlyInvoice) {
+              console.log('No monthly invoice found for the previous month.');
+              return;
+            }
+
+            const productEarnings = {};
+            const orderList = monthlyInvoice.orders;
+            const totalIncomeOrders = monthlyInvoice.totalEarnings;
+            const totalEarnings = monthlyInvoice.totalEarnings;
+            let totalDel = 0;
+            const itemDetails = [];
+            for (const order of orderList) {
+              const ord = await Order.findOne({ _id: order });
+              const items = ord.items;
+
+              //console.log(items);
+
+              for (const item of items) {
+                const itemId = item.itemId;
+                const price = item.uPrice;
+                const qty = item.qty;
+                const totalIncome = price * qty;
+                totalDel = totalDel + ord.totalDeliveryCharge;
+
+                const productId = itemId;
+                const product = await Product.findById(productId);
+
+                // Retrieve item title and unit from the product
+                const id = product._id;
+                const itemTitle = product.title;
+                const itemUnit = product.unit;
+                const color = product.imageUrls[0].placeholder;
+                //console.log(color)
+                itemDetails.push({
+                  _id: id,
+                  title: itemTitle,
+                  unit: itemUnit,
+                  qty: qty,
+                  color: color,
+                  price: price,
+                  totalIncome: totalIncome,
+                });
+              }
+            }
+            // console.log(totalDel)
+
+            const result = itemDetails.reduce((acc, curr) => {
+              const existingProduct = acc.find(
+                (item) => item.title === curr.title
+              );
+              if (existingProduct) {
+                existingProduct.totalIncome += curr.totalIncome;
+              } else {
+                acc.push({
+                  title: curr.title,
+                  totalIncome: curr.totalIncome,
+                  color: curr.color,
+                });
+              }
+
+              return acc;
+            }, []);
+            let i = 0;
+            const colorScale = [
+              'tomato',
+              'orange',
+              'gold',
+              'cyan',
+              'navy',
+              'cornflowerblue',
+              'lightgreen',
+            ];
+            const pieChartWords = [
+              "Just so you're aware",
+              'so you know',
+              'for your attention',
+              'We would like to bring to your attention',
+              'For your information',
+              'We could see that',
+            ];
+            const pieChartDataSorted = result.sort(
+              (a, b) => b.totalIncome - a.totalIncome
+            );
+            const highestIncomeProduct = pieChartDataSorted[0].title;
+            const pieChartMessage = `${getRandomWord(
+              pieChartWords
+            )} ${highestIncomeProduct} is the highest income generating product for you.`;
+            //console.log(highestIncomeProduct)
+
+            for (const resultItem of result) {
+              // console.log(resultItem.totalIncome)
+              // console.log(totalIncomeOrders)
+              // console.log(totalDel)
+              let percentage =
+                (resultItem.totalIncome / (totalIncomeOrders - totalDel)) * 100;
+              let percentageString = percentage.toFixed() + '%';
+              pieChartData.push({
+                x: percentageString,
+                y: resultItem.totalIncome,
+              });
+              titles.push({
+                name: resultItem.title,
+                symbol: { fill: colorScale[i], size: 8 },
+              });
+              colors.push(resultItem.color);
+              i++;
+            }
+
+            // console.log(pieChartData);
+
+            // console.log(titles);
+            // console.log(colors);
+            res.status(200).json({
+              message: 'Success Reports path',
+              barchart: monthlyIncomes,
+              months: months,
+              bestOverallProduct: productDetails,
+              pieChartData: pieChartData,
+              colors: colors,
+              titles: titles,
+              barChartMessage: message,
+              barchartGood: barChartGood,
+              pieChartMessage: pieChartMessage,
+            });
+          });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unsuccessful' });
   }
 };
