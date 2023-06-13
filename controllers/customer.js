@@ -1703,7 +1703,6 @@ exports.getFarmerProducts = async (req, res, next) => {
 
 exports.getOrderReviewDetails = async (req, res) => {
   try {
-    console.log(req.params);
     const order = await Order.findOne({ _id: req.params.orderId });
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -1724,8 +1723,11 @@ exports.getOrderReviewDetails = async (req, res) => {
       data['qty'] = itemData[item].qty;
       data['imageUrl'] = product.imageUrls[0];
       data['title'] = product.title;
+      data['rating'] = product.rating;
+      data['review'] = product.review;
       productData.push(data);
     }
+    console.log(productData);
     res
       .status(200)
       .json({ message: 'Success', order: orderData, product: productData });
@@ -1738,6 +1740,7 @@ exports.getOrderReviewDetails = async (req, res) => {
 exports.getReportFarmerDetails = async (req, res) => {
   try {
     const farmer = await User.findOne({ _id: req.params.farmerId });
+    const followData = req.user.customer.following;
     const farmerData = {
       farmerId: farmer._id,
       farmerName: farmer.fname + ' ' + farmer.lname,
@@ -1894,5 +1897,19 @@ exports.postLocation = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Fail to add Location' });
+  }
+};
+
+exports.postReview = async (req, res) => {
+  try {
+    console.log('hi');
+
+    req.order.items.review.push(review);
+    await req.order.save();
+    console.log(review);
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Fail to add Review' });
   }
 };

@@ -56,11 +56,6 @@ router.post('/unfollow/:farmerId', customerController.unfollow);
 
 router.get('/cards/', customerController.getCards);
 
-router.get(
-  '/reportFarmer/:farmerId',
-  customerController.getReportFarmerDetails
-);
-
 router.post('/sendLocation/', customerController.postLocation);
 
 //router.post("/deleteLocation/", customerController.deleteLocation);
@@ -84,6 +79,7 @@ router.post('/cancel-order/:orderId', customerController.postCancelOrder);
 router.post('/confirm-pickup/:orderId', customerController.postPickupOrder);
 
 router.get('/get-order/:orderId', customerController.getOrderDetails);
+
 router.get('/get-orders/:type', customerController.getOrders);
 
 router.get('/getSpecificOrder/:orderId', customerController.getSpecificOrder);
@@ -122,5 +118,12 @@ router.get('/get-support-tickets', customerController.getTickets);
 router.get('/support-ticket/:id', farmerController.getSupportTicket);
 
 router.post('/support-ticket', farmerController.supportTicket);
+
+router.post('/write-review/:itemId', customerController.postReview);
+
+router.get(
+  '/report-farmer/farmerID',
+  customerController.getReportFarmerDetails
+);
 
 module.exports = router;

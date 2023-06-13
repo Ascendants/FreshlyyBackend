@@ -79,6 +79,8 @@ const orderSchema = new Schema({
           type: ObjectId,
           required: true,
         },
+        rating: Number,
+        review: String,
       },
       { _id: false }
     ),
