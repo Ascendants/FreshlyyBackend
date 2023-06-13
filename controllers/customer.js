@@ -753,19 +753,21 @@ exports.postDeleteCartItem = async (req, res) => {
   }
 };
 
-// exports.getChatDetails = async (req, res) => {
-//   try {
-//     const { farmerId } = req.params;
-//     console.log(farmerId);
-//     const farmer = await User.findOne({ _id: farmerId });
-//     console.log(farmer);
-//     res.status(200).json({ message: 'Success' });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Something went wrong' });
-//     logger(error);
-//     return;
-//   }
-// }
+exports.getChatDetails = async (req, res) => {
+  try {
+    const { farmerId } = req.params;
+    console.log(farmerId);
+    const farmer = await User.findOne({ _id: farmerId });
+    const farmerEmail = farmer.email;
+    const farmerLname = farmer.lname;
+    console.log(farmerEmail);
+    res.status(200).json({ message: 'Success', farmerEmail: farmerEmail, farmerLname: farmerLname });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong' });
+    logger(error);
+    return;
+  }
+}
 
 exports.getItem = async (req, res) => {
   try {

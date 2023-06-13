@@ -42,14 +42,13 @@ router.post('/cart/edit', customerController.postEditCart);
 
 router.post('/cart/delete/:productId', customerController.postDeleteCartItem);
 
-// router.get('/get-chatDetails/:productId', customerController.getChatDetails);
-
 router.get('/item/:productId', customerController.getItem);
+
 router.get('/wishlist/', customerController.getWishList);
 
 router.post('/wishList/add', customerController.postWishListt);
 
-router.post('/support-ticket', farmerController.supportTicket);
+router.get('/get-chatDetails/:farmerId', customerController.getChatDetails);
 
 // router.delete('/wishList/remove/:id', customerController.removeWishlistItem);
 
@@ -64,6 +63,8 @@ router.get('/social-corner', customerController.getSocialProducts);
 router.get('/get-support-tickets', customerController.getTickets);
 
 router.get('/support-ticket/:id', farmerController.getSupportTicket);
+
+router.post('/support-ticket', farmerController.supportTicket);
 
 const cardTypes = {
   visa: /^4[0-9]{12}(?:[0-9]{3})?$/,
