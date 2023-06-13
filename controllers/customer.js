@@ -1,108 +1,120 @@
-const Product = require('../models/Product');
-const { validationResult } = require('express-validator');
-const { logger } = require('../util/logger');
-const User = require('../models/User');
-const Order = require('../models/Order');
-const mongoose = require('mongoose');
-const moment = require('moment');
-const { ObjectId } = require('mongodb');
-const cron = require('node-cron');
-const SupportTicket = require('../models/SupportTicket');
+const Product = require("../models/Product");
+const { validationResult } = require("express-validator");
+const { logger } = require("../util/logger");
+const User = require("../models/User");
+const Order = require("../models/Order");
+const mongoose = require("mongoose");
+const moment = require("moment");
+const { ObjectId } = require("mongodb");
+const cron = require("node-cron");
+const SupportTicket = require("../models/SupportTicket");
 
 exports.checkSignupCustomer = (req, res, next) => {
-   const email=req.userEmail
-   
+  const email = req.userEmail;
 };
 
-exports.signUp = async(req, res, next) => {
-  console.log(req.body)
-  let profilePic
-	try {
-    
-		const { FirstName, LastName, dob, nic, gender, address,email} = req.body;
-		console.log(FirstName,LastName,dob,nic,gender,address)
-		// Check if required fields are empty
-		if ( !FirstName || !LastName ||  !dob ||  !nic || !gender || !address) {
-		  return res.status(400).json({message:'unsuccessful',error:'Please fill all the necessary details for signup'})
-		}
-		//Validate date of birth format
+exports.signUp = async (req, res, next) => {
+  console.log(req.body);
+  let profilePic;
+  try {
+    const { FirstName, LastName, dob, nic, gender, address, email } = req.body;
+    console.log(FirstName, LastName, dob, nic, gender, address);
+    // Check if required fields are empty
+    if (!FirstName || !LastName || !dob || !nic || !gender || !address) {
+      return res.status(400).json({
+        message: "unsuccessful",
+        error: "Please fill all the necessary details for signup",
+      });
+    }
+    //Validate date of birth format
     const date = new Date(dob);
     const isValid = !isNaN(date.getTime()) && date.toISOString() === dob;
     if (isValid) {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       const formattedDate = `${year}-${month}-${day}`;
-     console.log(formattedDate)
+      console.log(formattedDate);
     } else {
-      return res.status(400).json({message:'Invalid Date'});
-    }
-	 
-		const nicRegex = /^([0-9]{9}[x|X|v|V]|[0-9]{12})$/;
-		if (!nicRegex.test(nic)) {
-		  return res.status(400).json({ error: 'Please enter a valid NIC number' });
-    }
-    if(gender==='Male'){
-      profilePic='https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FmaleProPic.png?alt=media&token=84b9fbf6-47f8-4b38-b691-678c72be079e'
-    }
-    else{
-      profilePic='https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56'
+      return res.status(400).json({ message: "Invalid Date" });
     }
 
-    const newUser=new User({
-      fname:FirstName,
-      lname:LastName,
-      gender:gender,
-      dob:dob,
-      email:email,
-      nic:nic,
-      accessLevel:req.body.accessLevel,
-      bAddress:address,
-      profilePicUrl:{ imageUrl:profilePic,placeholder: 'LJK-8|%2?^IoF}oft9odEPM{Iqt7'},
-    
-    })
+    const nicRegex = /^([0-9]{9}[x|X|v|V]|[0-9]{12})$/;
+    if (!nicRegex.test(nic)) {
+      return res.status(400).json({ error: "Please enter a valid NIC number" });
+    }
+    if (gender === "Male") {
+      profilePic =
+        "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FmaleProPic.png?alt=media&token=84b9fbf6-47f8-4b38-b691-678c72be079e";
+    } else {
+      profilePic =
+        "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/UserImages%2FfemaleProPic.png?alt=media&token=8361671a-2325-4540-8e35-c74d0bb88b56";
+    }
+
+    const newUser = new User({
+      fname: FirstName,
+      lname: LastName,
+      gender: gender,
+      dob: dob,
+      email: email,
+      nic: nic,
+      accessLevel: req.body.accessLevel,
+      bAddress: address,
+      profilePicUrl: {
+        imageUrl: profilePic,
+        placeholder: "LJK-8|%2?^IoF}oft9odEPM{Iqt7",
+      },
+      customer: {
+        slctdLocation: new Location({
+          name: "Home",
+          longitude: 79.891281,
+          latitude: 6.788071,
+        }),
+      },
+    });
     newUser.save((err, savedUser) => {
-      if(err){
-        if (err.code===11000) {
-          console.error("Error-",err);
-          return res.status(500).json({ message: 'unsuccess',error:'Duplicate user;same email cannot be registered twice' });
-        } 
-        if(err){
-          console.log(err)
-          return res.status(500).json({message:'unsuccess'})
+      if (err) {
+        if (err.code === 11000) {
+          console.error("Error-", err);
+          return res.status(500).json({
+            message: "unsuccess",
+            error: "Duplicate user;same email cannot be registered twice",
+          });
+        }
+        if (err) {
+          console.log(err);
+          return res.status(500).json({ message: "unsuccess" });
         }
       }
-      
-      return res.status(200).json({message:'Success',email:email})
+
+      return res.status(200).json({ message: "Success", email: email });
     });
-
-	  } catch (error) {
-		// Return an error message if the token is invalid or expired
-		  console.log("Error",error)
-	  }
-
+  } catch (error) {
+    // Return an error message if the token is invalid or expired
+    console.log("Error", error);
+  }
 };
 
 const cancelOrder = async (orderId) => {
   if (!orderId) {
-    return { status: 422, message: 'Validation Error' };
+    return { status: 422, message: "Validation Error" };
   }
-  const stripe = require('stripe')(process.env.STRIPE_SECRET);
+  const stripe = require("stripe")(process.env.STRIPE_SECRET);
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
     const order = await Order.findById(orderId);
     if (!order) {
-      return { status: 404, message: 'Order not found' };
+      return { status: 404, message: "Order not found" };
     }
     if (order.orderUpdate.processed != null) {
-      return { status: 403, message: 'Not possible to cancel at this moment' };
+      return { status: 403, message: "Not possible to cancel at this moment" };
     }
     if (order.orderUpdate.cancelled != null) {
-      return { status: 403, message: 'Already Cancelled' };
+      return { status: 403, message: "Already Cancelled" };
     }
     if (order.orderUpdate.failed != null) {
-      return { status: 403, message: 'Failed Order. No need to cancel.' };
+      return { status: 403, message: "Failed Order. No need to cancel." };
     }
     for (item of order.items) {
       const result = await Product.findOneAndUpdate(
@@ -115,18 +127,18 @@ const cancelOrder = async (orderId) => {
         { new: true, session: session }
       );
       if (!result) {
-        throw new Error('Failed to update product quantity');
+        throw new Error("Failed to update product quantity");
       }
     }
     for (let i in order.payment) {
-      if (order.payment[i].status == 'Failed') {
+      if (order.payment[i].status == "Failed") {
         continue;
       }
-      if (order.payment[i].type == 'Coupon') {
+      if (order.payment[i].type == "Coupon") {
         //coupon management
-      } else if (order.payment[i].type == 'COD') {
-        order.payment[i].status = 'Refunded';
-      } else if (order.payment[i].type == 'Card') {
+      } else if (order.payment[i].type == "COD") {
+        order.payment[i].status = "Refunded";
+      } else if (order.payment[i].type == "Card") {
         let refund;
         try {
           refund = await stripe.refunds.create({
@@ -135,8 +147,8 @@ const cancelOrder = async (orderId) => {
         } catch (error) {
           logger(error);
         }
-        if (refund?.status == 'succeeded') {
-          order.payment[i].status = 'Refunded';
+        if (refund?.status == "succeeded") {
+          order.payment[i].status = "Refunded";
         } else {
           //notify admin of the failed refund and ask to do manually
         }
@@ -145,7 +157,7 @@ const cancelOrder = async (orderId) => {
     order.orderUpdate.cancelled = Date.now();
     await order.save({ session: session });
     await session.commitTransaction();
-    return { status: 200, message: 'Success' };
+    return { status: 200, message: "Success" };
   } catch (error) {
     await session.abortTransaction();
     return { status: 500, message: error.message };
@@ -161,42 +173,42 @@ exports.getDashboard = async (req, res, next) => {
   };
   const toPay = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.payment': null,
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.failed': { $eq: null },
+    "orderUpdate.payment": null,
+    "orderUpdate.cancelled": { $eq: null },
+    "orderUpdate.failed": { $eq: null },
   });
   const toProcess = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': null,
+    "orderUpdate.failed": { $eq: null },
+    "orderUpdate.cancelled": { $eq: null },
+    "orderUpdate.payment": { $ne: null },
+    "orderUpdate.processed": null,
   });
   const toShip = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.shipped': null,
+    "orderUpdate.failed": { $eq: null },
+    "orderUpdate.cancelled": { $eq: null },
+    "orderUpdate.payment": { $ne: null },
+    "orderUpdate.processed": { $ne: null },
+    "orderUpdate.shipped": null,
     isDelivery: true,
   });
   const toReceive = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.shipped': { $ne: null },
-    'orderUpdate.delivered': null,
+    "orderUpdate.failed": { $eq: null },
+    "orderUpdate.cancelled": { $eq: null },
+    "orderUpdate.payment": { $ne: null },
+    "orderUpdate.processed": { $ne: null },
+    "orderUpdate.shipped": { $ne: null },
+    "orderUpdate.delivered": null,
   });
   const toPickup = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.payment': { $ne: null },
-    'orderUpdate.processed': { $ne: null },
-    'orderUpdate.pickedUp': null,
+    "orderUpdate.failed": { $eq: null },
+    "orderUpdate.cancelled": { $eq: null },
+    "orderUpdate.payment": { $ne: null },
+    "orderUpdate.processed": { $ne: null },
+    "orderUpdate.pickedUp": null,
     isDelivery: false,
   });
   const toReview = await Order.countDocuments({
@@ -205,26 +217,26 @@ exports.getDashboard = async (req, res, next) => {
         customer: req.user._id,
         farmerRating: -1,
         deliveryRating: -1,
-        'orderUpdate.delivered': { $ne: null },
-        'orderUpdate.failed': { $eq: null },
-        'orderUpdate.cancelled': { $eq: null },
+        "orderUpdate.delivered": { $ne: null },
+        "orderUpdate.failed": { $eq: null },
+        "orderUpdate.cancelled": { $eq: null },
       },
       {
         customer: req.user._id,
         farmerRating: -1,
-        'orderUpdate.pickedUp': { $ne: null },
-        'orderUpdate.failed': { $eq: null },
-        'orderUpdate.cancelled': { $eq: null },
+        "orderUpdate.pickedUp": { $ne: null },
+        "orderUpdate.failed": { $eq: null },
+        "orderUpdate.cancelled": { $eq: null },
       },
     ],
   });
   const all = await Order.countDocuments({
     customer: req.user._id,
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.cancelled': { $eq: null },
+    "orderUpdate.failed": { $eq: null },
+    "orderUpdate.cancelled": { $eq: null },
   });
   res.status(200).json({
-    message: 'Success',
+    message: "Success",
     user: user,
     toPay: toPay,
     toProcess: toProcess,
@@ -240,7 +252,7 @@ exports.postOrder = async (req, res, next) => {
   const deliveryCharges = req.body.deliveryCharges; //retrieves what orders the customer wants to get delivered
   const session = await mongoose.startSession();
   if (!deliveryCharges) {
-    res.status(400).json({ message: 'Bad Request' });
+    res.status(400).json({ message: "Bad Request" });
     return;
   }
   try {
@@ -252,7 +264,7 @@ exports.postOrder = async (req, res, next) => {
       );
     });
     if (!isEveryFarmerThere) {
-      throw new Error('Validation Error');
+      throw new Error("Validation Error");
     }
     //validate if the client has correctly marked all the farmer orders' delivery preference
     const orders = [];
@@ -283,7 +295,7 @@ exports.postOrder = async (req, res, next) => {
           {
             _id: cartItem.item,
             qtyAvailable: { $gte: cartItem.qty },
-            status: 'Live',
+            status: "Live",
           },
           //filter order item and validate if the quantity is available and whether the produce listing is live
 
@@ -293,7 +305,7 @@ exports.postOrder = async (req, res, next) => {
           { new: true, session: session }
         );
         if (!result) {
-          throw new Error('Not Available');
+          throw new Error("Not Available");
           //if one of them fails, abort the transaction by throwing an error
         }
         order.items.push({
@@ -311,7 +323,7 @@ exports.postOrder = async (req, res, next) => {
     }
     //remember to clear the cart in production
     session.commitTransaction(); //change this to commit
-    res.status(200).json({ message: 'Success', orderDetails: orders });
+    res.status(200).json({ message: "Success", orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
@@ -325,19 +337,19 @@ exports.postPickupOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
     if (order.orderUpdate.processed == null) {
       return res
         .status(403)
-        .json({ message: 'Not possible pickup at this moment' });
+        .json({ message: "Not possible pickup at this moment" });
     }
     if (order.isDelivery != false) {
-      return res.status(403).json({ message: 'This order will be delivered' });
+      return res.status(403).json({ message: "This order will be delivered" });
     }
     order.orderUpdate.pickedUp = Date.now();
     order.save();
-    return res.status(200).json({ message: 'Success' });
+    return res.status(200).json({ message: "Success" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -355,45 +367,45 @@ exports.postPayment = async (req, res, next) => {
   const saveCard = req.body.saveCard;
   const session = await mongoose.startSession();
   if (!payFrom || !orders || !Array.isArray(orders)) {
-    res.status(400).json({ message: 'Bad Request' });
+    res.status(400).json({ message: "Bad Request" });
     return;
   }
 
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     session.startTransaction(); //uses mongoose transactions to roll back anytime an error occurs
     for (let orderId of orders) {
       const order = await Order.findById(orderId).session(session);
       if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
+        return res.status(404).json({ message: "Order not found" });
       }
       if (order.orderUpdate.payment != null) {
-        return res.status(403).json({ message: 'Already Paid' });
+        return res.status(403).json({ message: "Already Paid" });
       }
       let total = order.totalPrice + order.totalDeliveryCharge;
       let totalPaid = 0;
       for (pay in order.payment) {
-        if (pay.status == 'Success') totalPaid += pay.amount;
+        if (pay.status == "Success") totalPaid += pay.amount;
       }
       const totalToPay = total - totalPaid; //get outstanding balance to be paid
-      if (payFrom == 'cod') {
+      if (payFrom == "cod") {
         order.payment.push({
-          type: 'COD',
-          status: 'Success',
+          type: "COD",
+          status: "Success",
           amount: totalToPay,
         });
         order.orderUpdate.payment = new Date();
       } else {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: totalToPay * 100,
-          currency: 'lkr',
+          currency: "lkr",
           customer: req.user.stripeId,
           confirm: true,
           payment_method: payFrom,
         });
         order.payment.push({
-          type: 'Card',
-          status: 'Success',
+          type: "Card",
+          status: "Success",
           amount: totalToPay,
           payRef: paymentIntent.id,
         });
@@ -405,7 +417,7 @@ exports.postPayment = async (req, res, next) => {
       await stripe.paymentMethods.detach(payFrom);
     }
     session.commitTransaction(); //change this to commit
-    res.status(200).json({ message: 'Success', orderDetails: orders });
+    res.status(200).json({ message: "Success", orderDetails: orders });
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ message: error.message });
@@ -416,15 +428,15 @@ exports.postPayment = async (req, res, next) => {
 
 exports.getPaymentIntent = async (req, res, next) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: 100000,
-      currency: 'lkr',
+      currency: "lkr",
     });
     const clientSecret = paymentIntent.client_secret;
-    res.status(200).json({ message: 'Success', clientSecret: clientSecret });
+    res.status(200).json({ message: "Success", clientSecret: clientSecret });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -432,18 +444,18 @@ exports.getPaymentIntent = async (req, res, next) => {
 
 exports.getCardSetupIntent = async (req, res, next) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     const setupIntent = await stripe.setupIntents.create({
       customer: req.user.stripeId,
     });
     res.json({
-      message: 'Success',
+      message: "Success",
       id: setupIntent.id,
       clientSecret: setupIntent.client_secret,
       customer: req.user.stripeId,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -451,12 +463,12 @@ exports.getCardSetupIntent = async (req, res, next) => {
 
 exports.getCreateStripeCustomer = async (req, res, next) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     const customer = await stripe.customers.create({ email: req.user.email });
     req.user.stripeId = customer.id;
     await req.user.save();
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -464,17 +476,17 @@ exports.getCreateStripeCustomer = async (req, res, next) => {
 
 exports.getCreateStripeAccount = async (req, res, next) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
     const account = await stripe.accounts.create({
-      type: 'express',
-      country: 'LK',
-      email: 'haritha@hasathcharu.com',
+      type: "express",
+      country: "LK",
+      email: "haritha@hasathcharu.com",
     });
     req.user.stripeId = account.id;
     await req.user.save();
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -484,7 +496,7 @@ exports.getCart = async (req, res, next) => {
   //needs to be edited when adding cart management
   const cart = req.user.customer.cart.toObject();
   if (!cart) {
-    res.status(200).json({ message: 'Success', cart: null });
+    res.status(200).json({ message: "Success", cart: null });
   }
   try {
     for (let farmerItem of cart) {
@@ -500,9 +512,9 @@ exports.getCart = async (req, res, next) => {
         cartItem.farmerName = farmer.fname;
       }
     }
-    res.status(200).json({ message: 'Success', cart: cart });
+    res.status(200).json({ message: "Success", cart: cart });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -510,30 +522,30 @@ exports.getCart = async (req, res, next) => {
 
 exports.getCards = async (req, res, next) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     const paymentMethods = await stripe.paymentMethods.list({
       customer: req.user.stripeId,
-      type: 'card',
+      type: "card",
     });
     const cards = [];
     paymentMethods.data.forEach((method) => {
       const brand =
         method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1);
-      let cardNo = '**** **** **** ' + method.card.last4;
-      if (brand == 'Amex') {
-        cardNo = '**** ****** *' + method.card.last4;
+      let cardNo = "**** **** **** " + method.card.last4;
+      if (brand == "Amex") {
+        cardNo = "**** ****** *" + method.card.last4;
       }
       cards.push({
         cardId: method.id,
-        cardName: brand + ' ' + method.card.last4,
+        cardName: brand + " " + method.card.last4,
         cardNo: cardNo,
         cardType: brand,
-        cardExp: method.card.exp_month + '/' + (method.card.exp_year % 2000),
+        cardExp: method.card.exp_month + "/" + (method.card.exp_year % 2000),
       });
     });
-    res.status(200).json({ message: 'Success', cards: cards });
+    res.status(200).json({ message: "Success", cards: cards });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
     logger(error);
     return;
   }
@@ -569,10 +581,10 @@ exports.getCards = async (req, res, next) => {
 exports.deleteRemoveCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
     const paymentMethod = await stripe.paymentMethods.detach(cardId);
-    res.status(200).json({ message: 'Success' });
+    res.status(200).json({ message: "Success" });
   } catch (error) {
     res.status(500).json({ message: error.message });
     logger(error);
@@ -584,7 +596,7 @@ exports.postEditCard = async (req, res, next) => {
   const cardId = req.params.cardId;
   const errors = validationResult(req);
   if (!errors.isEmpty())
-    return res.status(422).json({ message: 'Vaildation Error' });
+    return res.status(422).json({ message: "Vaildation Error" });
   const { Nickname } = req.body;
   try {
     req.user.customer.paymentMethods.forEach((card) => {
@@ -593,7 +605,7 @@ exports.postEditCard = async (req, res, next) => {
       }
     });
     await req.user.save();
-    res.status(200).json({ message: 'Success' });
+    res.status(200).json({ message: "Success" });
   } catch (error) {
     res.status(500).json({ message: error.message });
     logger(error);
@@ -606,11 +618,11 @@ exports.getOrderDetails = async (req, res, next) => {
   try {
     const order = await Order.findOne({
       _id: orderId,
-      'orderUpdate.failed': { $eq: null },
+      "orderUpdate.failed": { $eq: null },
       customer: req.user._id,
     });
     if (!order) {
-      throw new Error('Order Not Found');
+      throw new Error("Order Not Found");
     }
 
     const orderData = order.toObject();
@@ -623,10 +635,10 @@ exports.getOrderDetails = async (req, res, next) => {
         title: itemData.title,
       };
     }
-    res.status(200).json({ message: 'Success', order: orderData });
+    res.status(200).json({ message: "Success", order: orderData });
   } catch (error) {
     logger(error);
-    if (error.message == 'Order Not Found') {
+    if (error.message == "Order Not Found") {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -638,151 +650,151 @@ exports.getOrderDetails = async (req, res, next) => {
 exports.getOrders = async (req, res, next) => {
   const type = req.params.type;
   if (!type) {
-    return res.status(422).json({ message: 'Vaildation Error' });
+    return res.status(422).json({ message: "Vaildation Error" });
   }
   try {
     let orders;
 
     switch (type) {
-      case 'all':
+      case "all":
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case 'to-pay':
+      case "to-pay":
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.payment': null,
-          'orderUpdate.cancelled': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
+          "orderUpdate.payment": null,
+          "orderUpdate.cancelled": { $eq: null },
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case 'processing':
+      case "processing":
         orders = await Order.find({
-          'orderUpdate.payment': { $ne: null },
-          'orderUpdate.processed': null,
-          'orderUpdate.cancelled': null,
-          'orderUpdate.failed': null,
+          "orderUpdate.payment": { $ne: null },
+          "orderUpdate.processed": null,
+          "orderUpdate.cancelled": null,
+          "orderUpdate.failed": null,
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case 'to-pickup':
+      case "to-pickup":
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.payment': { $ne: null },
-          'orderUpdate.processed': { $ne: null },
-          'orderUpdate.pickedUp': null,
-          'orderUpdate.cancelled': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
+          "orderUpdate.payment": { $ne: null },
+          "orderUpdate.processed": { $ne: null },
+          "orderUpdate.pickedUp": null,
+          "orderUpdate.cancelled": { $eq: null },
           isDelivery: false,
           customer: req.user._id,
         }).sort({ _id: -1 });
         break;
-      case 'shipped':
+      case "shipped":
         orders = await Order.find({
           customer: req.user._id,
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.payment': { $ne: null },
-          'orderUpdate.processed': { $ne: null },
-          'orderUpdate.shipped': { $ne: null },
-          'orderUpdate.delivered': null,
-          'orderUpdate.cancelled': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
+          "orderUpdate.payment": { $ne: null },
+          "orderUpdate.processed": { $ne: null },
+          "orderUpdate.shipped": { $ne: null },
+          "orderUpdate.delivered": null,
+          "orderUpdate.cancelled": { $eq: null },
         }).sort({ _id: -1 });
         break;
-      case 'to-review':
+      case "to-review":
         orders = await Order.find({
           $or: [
             {
               customer: req.user._id,
               farmerRating: -1,
               deliveryRating: -1,
-              'orderUpdate.delivered': { $ne: null },
-              'orderUpdate.failed': { $eq: null },
-              'orderUpdate.cancelled': { $eq: null },
+              "orderUpdate.delivered": { $ne: null },
+              "orderUpdate.failed": { $eq: null },
+              "orderUpdate.cancelled": { $eq: null },
             },
             {
               customer: req.user._id,
               farmerRating: -1,
-              'orderUpdate.pickedUp': { $ne: null },
-              'orderUpdate.failed': { $eq: null },
-              'orderUpdate.cancelled': { $eq: null },
+              "orderUpdate.pickedUp": { $ne: null },
+              "orderUpdate.failed": { $eq: null },
+              "orderUpdate.cancelled": { $eq: null },
             },
           ],
         }).sort({ _id: -1 });
         break;
-      case 'completed':
+      case "completed":
         orders = await Order.find({
           customer: req.user._id,
           farmerRating: { $ne: -1 },
           deliveryRating: { $ne: -1 },
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.cancelled': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
+          "orderUpdate.cancelled": { $eq: null },
         }).sort({ _id: -1 });
         break;
-      case 'cancelled':
+      case "cancelled":
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
-          'orderUpdate.cancelled': { $ne: null },
+          "orderUpdate.failed": { $eq: null },
+          "orderUpdate.cancelled": { $ne: null },
           customer: req.user._id,
-        }).sort({ 'orderUpdate.cancelled': -1 });
+        }).sort({ "orderUpdate.cancelled": -1 });
         break;
       default:
         orders = await Order.find({
-          'orderUpdate.failed': { $eq: null },
+          "orderUpdate.failed": { $eq: null },
           customer: req.user._id,
         });
         break;
     }
 
     if (!orders) {
-      throw new Error('No Orders');
+      throw new Error("No Orders");
     }
     let orderData = [];
     orders.forEach((order) => {
-      let status = 'to-pay';
+      let status = "to-pay";
       if (order.orderUpdate.cancelled) {
-        status = 'cancelled';
+        status = "cancelled";
       } else if (!order.orderUpdate.payment) {
-        status = 'to-pay';
+        status = "to-pay";
       } else if (
         !order.orderUpdate.processed ||
         (order.orderUpdate.processed &&
           order.isDelivery &&
           !order.orderUpdate.shipped)
       ) {
-        status = 'processing';
+        status = "processing";
       } else if (order.orderUpdate.shipped && !order.orderUpdate.delivered) {
-        status = 'shipped';
+        status = "shipped";
       } else if (!order.orderUpdate.pickedUp && !order.isDelivery) {
-        status = 'to-pickup';
+        status = "to-pickup";
       } else if (
         (order.orderUpdate.delivered || order.orderUpdate.pickedUp) &&
         order.farmerRating == -1
       ) {
-        status = 'to-review';
+        status = "to-review";
       } else if (order.farmerRating != -1) {
-        status = 'completed';
+        status = "completed";
       }
       orderData.push({
         farmerName: order.farmerName,
         orderId: order._id,
         orderPlaced: order.orderUpdate.placed
-          ? moment(order.orderUpdate.placed).format('YYYY-MM-DD')
+          ? moment(order.orderUpdate.placed).format("YYYY-MM-DD")
           : null,
         orderPaid: order.orderUpdate.payment
-          ? moment(order.orderUpdate.payment).format('YYYY-MM-DD')
+          ? moment(order.orderUpdate.payment).format("YYYY-MM-DD")
           : null,
         orderCancelled: order.orderUpdate.cancelled
-          ? moment(order.orderUpdate.cancelled).format('YYYY-MM-DD')
+          ? moment(order.orderUpdate.cancelled).format("YYYY-MM-DD")
           : null,
         orderTotal: order.totalPrice + order.totalDeliveryCharge,
         status: status,
       });
     });
-    res.status(200).json({ message: 'Success', orders: orderData });
+    res.status(200).json({ message: "Success", orders: orderData });
   } catch (error) {
     logger(error);
-    if (error.message == 'No Orders') {
+    if (error.message == "No Orders") {
       res.status(404).json({ message: error.message });
       return;
     }
@@ -824,19 +836,19 @@ exports.postLike = async (req, res, next) => {
   const userEmail = req.user.email;
   const product = await Product.findById(id);
   if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
+    return res.status(404).json({ message: "Product not found" });
   }
   const likes = new Set(product.likes);
-  if (method === 'add') {
+  if (method === "add") {
     likes.add(userEmail);
-  } else if (method === 'remove') {
+  } else if (method === "remove") {
     likes.delete(userEmail);
   } else {
-    return res.status(400).json({ message: 'Invalid method' });
+    return res.status(400).json({ message: "Invalid method" });
   }
   product.likes = Array.from(likes);
   await product.save();
-  res.json({ message: 'Success saved the Like' });
+  res.json({ message: "Success saved the Like" });
 };
 
 exports.getProducts = async (req, res, next) => {
@@ -847,14 +859,16 @@ exports.getProducts = async (req, res, next) => {
   }
   try {
     const userEmail = req.user.email;
+    // console.log(userEmail);
     const user = await User.findOne({ email: userEmail });
-    const isFarmer = user.accessLevel === 'farmer';
-    const products = await Product.find({ status: 'Live' });
-    
+    const isFarmer = user.accessLevel === "farmer";
+    // console.log(user);
+    const products = await Product.find({ status: "Live" });
+
     const productDetails = await Promise.all(
       products.map(async (product) => {
         const farmer = await User.findById(product.farmer);
-        console.log(farmer)
+        //console.log(farmer)
         const farmerSaleLocation = farmer.farmer.saleLocation;
         const customerLocation = isFarmer ? null : user.customer.slctdLocation;
 
@@ -871,9 +885,9 @@ exports.getProducts = async (req, res, next) => {
               `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${customerLocation.latitude},${customerLocation.longitude}&destinations=${farmerSaleLocation.latitude},${farmerSaleLocation.longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             const distanceData = await distanceResponse.json();
-            console.log(distanceData)
+            // console.log(distanceData);
             distanceValue = distanceData.rows[0].elements[0].distance.text;
-            distanceNum = parseFloat(distanceValue.replace('Km', '').trim());
+            distanceNum = parseFloat(distanceValue.replace("Km", "").trim());
             deliveryCost = distanceNum * farmer.farmer.deliveryCharge;
             totalPrice = calculateTotalPrice(
               product.price,
@@ -927,10 +941,10 @@ exports.getProducts = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ message: 'Success', mainPageProducts: sortedResult });
+      .json({ message: "Success", mainPageProducts: sortedResult });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Unsuccessful' });
+    res.status(500).json({ message: "Unsuccessful" });
   }
 };
 
@@ -940,7 +954,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const user = await User.findOne({ email: userEmail });
     const todayDate = new Date();
     const products = await Product.find({
-      status: 'Live',
+      status: "Live",
       dateAdded: {
         $gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
       },
@@ -966,13 +980,13 @@ exports.getSocialProducts = async (req, res, next) => {
 
     const topselling = await Order.aggregate([
       {
-        $unwind: '$items',
+        $unwind: "$items",
       },
       {
         $group: {
-          _id: '$items.itemId',
+          _id: "$items.itemId",
           sum: {
-            $sum: '$items.qty',
+            $sum: "$items.qty",
           },
         },
       },
@@ -985,7 +999,7 @@ exports.getSocialProducts = async (req, res, next) => {
         $group: {
           _id: null,
           top_selling_products: {
-            $push: '$_id',
+            $push: "$_id",
           },
         },
       },
@@ -1035,7 +1049,7 @@ exports.getSocialProducts = async (req, res, next) => {
     // const firstPart = productsWithImageUrl;
 
     const famousProducts = await Product.aggregate([
-      { $match: { status: 'Live', likes: { $exists: true } } },
+      { $match: { status: "Live", likes: { $exists: true } } },
       {
         $project: {
           _id: 1,
@@ -1047,7 +1061,7 @@ exports.getSocialProducts = async (req, res, next) => {
           unit: 1,
           publicUrl: 1,
           likes: 1,
-          likesCount: { $size: '$likes' },
+          likesCount: { $size: "$likes" },
         },
       },
       { $sort: { likesCount: -1 } },
@@ -1056,7 +1070,7 @@ exports.getSocialProducts = async (req, res, next) => {
     const allFamousProducts = await Promise.all(
       famousProducts.map(async (product) => {
         const farmer = await User.findById(product.farmer);
-        console.log(farmer)
+        console.log(farmer);
         return {
           _id: product._id,
           price: product.price,
@@ -1073,10 +1087,10 @@ exports.getSocialProducts = async (req, res, next) => {
     );
 
     const section = [
-      'Recently Added',
-      'Following',
-      'Top Selling Products',
-      'Famous Products',
+      "Recently Added",
+      "Following",
+      "Top Selling Products",
+      "Famous Products",
     ];
     const data = [
       recentlyAdded,
@@ -1089,9 +1103,9 @@ exports.getSocialProducts = async (req, res, next) => {
     for (const index in section) {
       const dataP = {};
       const showSection = data[index].length > 0 ? true : false;
-      dataP['title'] = section[index] == null ? null : section[index];
-      dataP['data'] = data[index];
-      dataP['showSection'] = showSection;
+      dataP["title"] = section[index] == null ? null : section[index];
+      dataP["data"] = data[index];
+      dataP["showSection"] = showSection;
       // dataP["horizontalScroll"]=section[index]==null?false:true;
       // console.log(dataP);
       dataOfProducts.push(dataP);
@@ -1099,21 +1113,21 @@ exports.getSocialProducts = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ message: 'Success', socialProducts: dataOfProducts });
+      .json({ message: "Success", socialProducts: dataOfProducts });
   } catch (error) {
     console.log(error);
   }
 };
 
 exports.getFollowingProducts = async (req, res, next) => {
-  res.send({ message: 'success' });
+  res.send({ message: "success" });
 };
 
 exports.getSpecificOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId);
     // console.log(order);
-    res.status(200).json({ message: 'Success', order: order });
+    res.status(200).json({ message: "Success", order: order });
   } catch (error) {
     console.log(error);
   }
@@ -1123,7 +1137,7 @@ exports.getTickets = async (req, res, next) => {
   try {
     const email = req.user.email;
     const tickets = await SupportTicket.find({ userEmail: email });
-    res.status(200).json({ message: 'Success', tickets: tickets });
+    res.status(200).json({ message: "Success", tickets: tickets });
   } catch (error) {
     console.log(error);
   }

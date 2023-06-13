@@ -37,6 +37,8 @@ router.get('/dashboard', customerController.getDashboard);
 
 router.get('/mainpage', customerController.getProducts);
 
+
+
 router.get('/social-corner', customerController.getSocialProducts);
 
 router.get('/get-support-tickets', customerController.getTickets);

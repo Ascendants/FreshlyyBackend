@@ -1,53 +1,56 @@
-const express = require('express');
+const express = require("express");
 
-const farmerController = require('../controllers/farmer');
-
+const farmerController = require("../controllers/farmer");
+const authController = require("../controllers/auth");
 const router = express.Router();
 
-const { body } = require('express-validator');
+const { body } = require("express-validator");
 
 // router.get('/product/:purl', publicController.getProduct);
 // router.get('/user', publicController.createUser);
-router.get('/hello', farmerController.getHello);
-router.get('/dashboard', farmerController.getDashboard);
+router.get("/hello", farmerController.getHello);
+router.use("*", authController.checkCommonAuth);
+router.get("/dashboard", farmerController.getDashboard);
 
-router.get('/get-banks', farmerController.getBanks);
+router.get("/get-banks", farmerController.getBanks);
 
-router.get('/earnings', farmerController.getEarnings);
+router.get("/earnings", farmerController.getEarnings);
 
-router.post('/payout-request', farmerController.postPayoutRequest);
+router.post("/payout-request", farmerController.postPayoutRequest);
 
-router.get('/payout-requests', farmerController.getPayoutRequests);
+router.get("/payout-requests", farmerController.getPayoutRequests);
 
-router.get('/invoices', farmerController.getInvoices);
+router.get("/invoices", farmerController.getInvoices);
+
+router.get("/reports", farmerController.getFarmerReports);
 
 router.post(
-  '/save-account',
+  "/save-account",
   [
-    body('AccountName').trim().isLength({ min: 2, max: 20 }),
-    body('AccountNumber').trim().isNumeric(),
-    body('bankId').trim(),
+    body("AccountName").trim().isLength({ min: 2, max: 20 }),
+    body("AccountNumber").trim().isNumeric(),
+    body("bankId").trim(),
   ],
   farmerController.postSaveAccount
 );
 
 //make this admin routes
-router.get('/support-tickets', farmerController.getSupportTickets);
-router.get('/support-ticket/:id', farmerController.getSupportTicket);
-router.put('/update-support-ticket/:id', farmerController.updateSupportTicket);
+router.get("/support-tickets", farmerController.getSupportTickets);
+router.get("/support-ticket/:id", farmerController.getSupportTicket);
+router.put("/update-support-ticket/:id", farmerController.updateSupportTicket);
 router.delete(
-  '/delete-support-ticket/:id',
+  "/delete-support-ticket/:id",
   farmerController.deleteSupportTicket
 );
-router.post('/support-ticket', farmerController.supportTicket);
+router.post("/support-ticket", farmerController.supportTicket);
 
-router.post('/create-coupon', farmerController.createCoupon);
-router.post('/verify-coupon-code', farmerController.verifyCouponCode);
+router.post("/create-coupon", farmerController.createCoupon);
+router.post("/verify-coupon-code", farmerController.verifyCouponCode);
 
-router.post('/insert-product', farmerController.insertProduct);
-router.get('/selling-product/:productId', farmerController.getSellingProduct);
+router.post("/insert-product", farmerController.insertProduct);
+router.get("/selling-product/:productId", farmerController.getSellingProduct);
 router.post(
-  '/update-product/:productId',
+  "/update-product/:productId",
   farmerController.updateProductDetails
 );
 

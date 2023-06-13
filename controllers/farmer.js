@@ -1,21 +1,21 @@
-const Product = require('../models/Product');
-const User = require('../models/User');
-const moment = require('moment');
-const Order = require('../models/Order');
-const { ObjectId } = require('mongodb');
-const Bank = require('../models/Bank');
-const SupportTicket = require('../models/SupportTicket');
-const Coupon = require('../models/Coupon');
-const { logger } = require('../util/logger');
-const PayoutRequest = require('../models/PayoutRequest');
-const mongoose = require('mongoose');
+const Product = require("../models/Product");
+const User = require("../models/User");
+const moment = require("moment");
+const Order = require("../models/Order");
+const { ObjectId } = require("mongodb");
+const Bank = require("../models/Bank");
+const SupportTicket = require("../models/SupportTicket");
+const Coupon = require("../models/Coupon");
+const { logger } = require("../util/logger");
+const PayoutRequest = require("../models/PayoutRequest");
+const mongoose = require("mongoose");
 
-const { validationResult } = require('express-validator');
-const FarmerMonthInvoice = require('../models/FarmerMonthInvoice');
+const { validationResult } = require("express-validator");
+const FarmerMonthInvoice = require("../models/FarmerMonthInvoice");
 
 exports.getHello = async (req, res, next) => {
-  console.log('Hello');
-  res.status(200).json({ message: 'Hello' });
+  console.log("Hello");
+  res.status(200).json({ message: "Hello" });
 };
 
 //Geting all the farmer's dashboard data
@@ -28,28 +28,28 @@ exports.getDashboard = async (req, res, next) => {
   // };
   const orders = await Order.find({ farmer: req.user._id }); //gives all orders belonging to farmer;
   const products = Product.find({ farmer: req.user._id });
-  res.status(200).json({ message: 'Success', user: req.user });
+  res.status(200).json({ message: "Success", user: req.user });
 };
 
 exports.insertProduct = async (req, res, next) => {
-  const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
+  const user = await User.findOne({ email: "komuthu@freshlyy.com" });
   console.log(req.body);
   const { price, qtyAvailable, description, title, minQtyIncrement } = req.body;
   const newProduct = new Product({
     title: title,
-    status: 'Paused',
+    status: "Paused",
     description: description,
     price: price,
     overallRating: 3,
     minQtyIncrement: minQtyIncrement,
-    unit: 'KG',
+    unit: "KG",
     farmer: user,
     qtyAvailable: qtyAvailable,
     imageUrls: [
       {
         imageUrl:
-          'https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa',
-        placeholder: '#9c7954',
+          "https://firebasestorage.googleapis.com/v0/b/freshlyyimagestore.appspot.com/o/ProductImages%2FP001_1.jpg?alt=media&token=eb80b75a-b8e9-4b54-9e31-f4e4f40e9faa",
+        placeholder: "#9c7954",
       },
     ],
   });
@@ -57,37 +57,37 @@ exports.insertProduct = async (req, res, next) => {
   if (minQtyIncrement >= qtyAvailable) {
     return res
       .status(400)
-      .json({ message: 'minQtyIncrement should be less than qtyAvailable' });
+      .json({ message: "minQtyIncrement should be less than qtyAvailable" });
   }
   if (!isNaN(parseFloat(title))) {
-    return res.status(400).json({ message: 'Title should not be a number' });
+    return res.status(400).json({ message: "Title should not be a number" });
   }
   if (isNaN(price) || isNaN(qtyAvailable)) {
-    res.status(400).json({ message: 'Price and quantity must be numbers' });
+    res.status(400).json({ message: "Price and quantity must be numbers" });
     return;
   }
   newProduct.publicUrl = (
-    newProduct.title.replace(/ /g, '_') +
-    '_' +
+    newProduct.title.replace(/ /g, "_") +
+    "_" +
     ObjectId(newProduct)
   ).toLowerCase();
   newProduct.save((err, savedProduct) => {
     if (err) {
       console.error(err);
-      res.status(500).send({ message: 'Error saving product' });
+      res.status(500).send({ message: "Error saving product" });
     } else {
-      res.status(200).json({ message: 'Success', product: savedProduct });
+      res.status(200).json({ message: "Success", product: savedProduct });
     }
   });
 };
 exports.getSellingProduct = async (req, res) => {
   try {
-    console.log('hii');
+    console.log("hii");
     // console.log(req.productId);
     const productId = req.params.productId;
     const product = await Product.findById(productId);
     console.log(product);
-    res.status(200).json({ message: 'Success', product: product });
+    res.status(200).json({ message: "Success", product: product });
   } catch (error) {
     console.log(error);
   }
@@ -115,7 +115,7 @@ async function updateProduct(productId, updatedFields) {
     const product = await Product.findByIdAndUpdate(productId, updatedFields);
 
     if (!product) {
-      throw new Error('Product not found');
+      throw new Error("Product not found");
     }
 
     return product;
@@ -125,7 +125,7 @@ async function updateProduct(productId, updatedFields) {
 }
 
 exports.updateProductDetails = async (req, res, next) => {
-  const user = await User.findOne({ email: 'komuthu@freshlyy.com' });
+  const user = await User.findOne({ email: "komuthu@freshlyy.com" });
   // console.log(req.body);
   console.log(req.params.productId);
 
@@ -135,10 +135,10 @@ exports.updateProductDetails = async (req, res, next) => {
     console.log(productId);
     console.log(updatedFields);
     await updateProduct(productId, updatedFields);
-    res.status(200).json({ message: 'Product updated successfully' });
+    res.status(200).json({ message: "Product updated successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error updating product' });
+    res.status(500).json({ message: "Error updating product" });
   }
 };
 
@@ -183,10 +183,10 @@ exports.supportTicket = (req, res, next) => {
   newSupportTicket.save((err, ticket) => {
     if (err) {
       console.log(err);
-      res.status(500).json({ message: 'Can not save data', error: err });
+      res.status(500).json({ message: "Can not save data", error: err });
     } else {
-      console.log('success');
-      res.status(200).json({ message: 'Success', id: ticket._id });
+      console.log("success");
+      res.status(200).json({ message: "Success", id: ticket._id });
     }
   });
 };
@@ -196,24 +196,24 @@ exports.getSupportTicket = async (req, res) => {
   console.log(ticketId);
   try {
     const supportTicket = await SupportTicket.findById(ticketId);
-    res.status(200).json({ message: 'Success', supportTicket: supportTicket });
+    res.status(200).json({ message: "Success", supportTicket: supportTicket });
   } catch (error) {
     console.log(error);
     res
       .status(500)
-      .json({ message: 'Error fetching supportTicket from database' });
+      .json({ message: "Error fetching supportTicket from database" });
   }
 };
 
 exports.getSupportTickets = async (req, res) => {
   try {
     const supportTickets = await SupportTicket.find({});
-    res.status(200).json({ message: 'Success', supportTicket: supportTickets });
+    res.status(200).json({ message: "Success", supportTicket: supportTickets });
   } catch (error) {
     console.log(error);
     res
       .status(500)
-      .json({ message: 'Error fetching supportTickets from database' });
+      .json({ message: "Error fetching supportTickets from database" });
   }
 };
 
@@ -230,7 +230,7 @@ exports.updateSupportTicket = async (req, res) => {
     res.json(supportTicket);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Error updating supportTicket');
+    res.status(500).send("Error updating supportTicket");
   }
 };
 
@@ -241,7 +241,7 @@ exports.deleteSupportTicket = async (req, res) => {
     res.sendStatus(204);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Error deleting supportTicket');
+    res.status(500).send("Error deleting supportTicket");
   }
 };
 
@@ -261,16 +261,16 @@ exports.createCoupon = (req, res, next) => {
   newCoupon.save((err) => {
     if (err) {
       console.log(err);
-      res.status(500).send('Error saving data');
+      res.status(500).send("Error saving data");
     } else {
-      console.log('success');
-      res.status(200).json({ message: 'Success' });
+      console.log("success");
+      res.status(200).json({ message: "Success" });
     }
   });
 };
 
 exports.verifyCouponCode = async (req, res, next) => {
-  console.log('hiii');
+  console.log("hiii");
   const cCode = req.body.cCode;
   console.log(cCode);
   try {
@@ -278,14 +278,14 @@ exports.verifyCouponCode = async (req, res, next) => {
     // console.log(coupon);
     if (coupon.length > 0) {
       res.status(200).json({
-        message: 'Code is already in the database',
+        message: "Code is already in the database",
         cCode: cCode,
         isExist: true,
       });
     } else {
       res
         .status(200)
-        .json({ message: 'Code is unique', cCode: cCode, isExist: false });
+        .json({ message: "Code is unique", cCode: cCode, isExist: false });
     }
   } catch (error) {
     console.log(error);
@@ -295,35 +295,35 @@ exports.verifyCouponCode = async (req, res, next) => {
 exports.getBanks = async (req, res, next) => {
   try {
     const banks = await Bank.find();
-    res.status(200).json({ message: 'Success', banks: banks });
+    res.status(200).json({ message: "Success", banks: banks });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
 exports.postCreateBank = async (req, res, next) => {
   const bank = new Bank({
-    BankName: 'Union Bank',
+    BankName: "Union Bank",
     BankAccountNumFormat: /\d{16}/,
   });
   bank.save();
 
-  res.status(200).json({ message: 'Success' });
+  res.status(200).json({ message: "Success" });
 };
 
 exports.postSaveAccount = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
-    return res.status(422).json({ message: 'Vaildation Error' });
+    return res.status(422).json({ message: "Vaildation Error" });
   try {
     const { bankId, AccountName, AccountNumber } = req.body;
     const bank = await Bank.findById(bankId);
     if (!bank) {
-      return res.status(422).json({ message: 'Bank not found' });
+      return res.status(422).json({ message: "Bank not found" });
     }
     if (!new RegExp(bank.BankAccountNumFormat).test(AccountNumber)) {
-      return res.status(422).json({ message: 'Invalid account number' });
+      return res.status(422).json({ message: "Invalid account number" });
     }
     const account = {
       Bank: bank._id,
@@ -333,10 +333,10 @@ exports.postSaveAccount = async (req, res, next) => {
     // console.log(req.user);
     req.user.farmer.bankAccount = account;
     req.user.save();
-    res.status(200).json({ message: 'Success' });
+    res.status(200).json({ message: "Success" });
   } catch (err) {
     console.log(err);
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
@@ -350,7 +350,7 @@ exports.getEarnings = async (req, res, next) => {
       accountNumber =
         req.user.farmer.bankAccount.AccountNumber.slice(0, -4).replace(
           /./g,
-          '*'
+          "*"
         ) + req.user.farmer.bankAccount.AccountNumber.slice(-4);
     }
     data = {
@@ -360,9 +360,9 @@ exports.getEarnings = async (req, res, next) => {
       withdrawable: req.user.farmer.withdrawable,
       couponCharges: req.user.farmer.accCouponCharges,
       lastUpdate:
-        moment(updatedDate).format('DD-MM-YYYY') +
-        ' at ' +
-        moment(updatedDate).format('HH:mm'),
+        moment(updatedDate).format("DD-MM-YYYY") +
+        " at " +
+        moment(updatedDate).format("HH:mm"),
       couponCharges: req.user.farmer.accCouponCharges,
       isWithdrawable: req.user.farmer.withdrawable > 2000,
       hasBankAccount: req.user.farmer.bankAccount != null,
@@ -370,27 +370,27 @@ exports.getEarnings = async (req, res, next) => {
       bankAccountNum: accountNumber,
       negativeSince: req.user.farmer.negativeBalanceSince
         ? moment(new Date(req.user.farmer.negativeBalanceSince)).format(
-            'DD-MM-YYYY'
+            "DD-MM-YYYY"
           )
         : null,
     };
-    res.status(200).json({ message: 'Success', earnings: data });
+    res.status(200).json({ message: "Success", earnings: data });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 
 exports.postPayoutRequest = async (req, res, next) => {
   if (req.user.farmer.withdrawable < 2000) {
-    return res.status(403).json({ message: 'Insufficient Balance' });
+    return res.status(403).json({ message: "Insufficient Balance" });
   }
   const session = await mongoose.startSession();
   try {
     const payoutRequest = new PayoutRequest({
       farmerId: req.user._id,
       amount: req.user.farmer.withdrawable,
-      farmerName: req.user.fname + ' ' + req.user.lname,
+      farmerName: req.user.fname + " " + req.user.lname,
       farmerEmail: req.user.email,
       farmerAddress: req.user.bAddress,
       account: req.user.farmer.bankAccount,
@@ -402,10 +402,10 @@ exports.postPayoutRequest = async (req, res, next) => {
     });
     res
       .status(200)
-      .json({ message: 'Success', payoutRequestId: payoutRequest._id });
+      .json({ message: "Success", payoutRequestId: payoutRequest._id });
   } catch (err) {
     logger(err);
-    return res.status(500).json({ message: 'Something went wrong' });
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
@@ -415,7 +415,7 @@ exports.changeFarmerFinStatus = async (
   session,
   withTransaction = false
 ) => {
-  if (!(status == 'Active' || status == 'Suspended')) {
+  if (!(status == "Active" || status == "Suspended")) {
     return false;
   }
   if (withTransaction) {
@@ -423,13 +423,13 @@ exports.changeFarmerFinStatus = async (
       await session.withTransaction(async () => {
         await Product.updateMany(
           { farmer: farmerId },
-          { farmerAvailable: status == 'Active' },
+          { farmerAvailable: status == "Active" },
           { session: session }
         );
         await User.findByIdAndUpdate(
           farmerId,
           {
-            'farmer.finStatus': status,
+            "farmer.finStatus": status,
           },
           { session: session }
         );
@@ -443,13 +443,13 @@ exports.changeFarmerFinStatus = async (
   try {
     await Product.updateMany(
       { farmer: farmerId },
-      { farmerAvailable: status == 'Active' },
+      { farmerAvailable: status == "Active" },
       { session: session }
     );
     await User.findByIdAndUpdate(
       farmerId,
       {
-        'farmer.finStatus': status,
+        "farmer.finStatus": status,
       },
       { session: session }
     );
@@ -469,22 +469,22 @@ exports.getPayoutRequests = async (req, res, next) => {
     for (request of payoutRequests) {
       const bank = (await Bank.findById(request.account.Bank)).BankName;
       const accountNumber =
-        request.account.AccountNumber.slice(0, -4).replace(/./g, '*') +
+        request.account.AccountNumber.slice(0, -4).replace(/./g, "*") +
         request.account.AccountNumber.slice(-4);
       data.push({
         id: request._id,
         amount: request.amount,
         created: request.update.created
-          ? moment(request.update.created).format('DD-MM-YYYY')
+          ? moment(request.update.created).format("DD-MM-YYYY")
           : null,
         acknowledged: request.update.acknowledged
-          ? moment(request.update.acknowledged).format('DD-MM-YYYY')
+          ? moment(request.update.acknowledged).format("DD-MM-YYYY")
           : null,
         cleared: request.update.cleared
-          ? moment(request.update.cleared).format('DD-MM-YYYY')
+          ? moment(request.update.cleared).format("DD-MM-YYYY")
           : null,
         rejected: request.update.rejected
-          ? moment(request.update.rejected).format('DD-MM-YYYY')
+          ? moment(request.update.rejected).format("DD-MM-YYYY")
           : null,
         rejectionReason: request.rejectionReason,
         payRef: request.payRef,
@@ -493,17 +493,17 @@ exports.getPayoutRequests = async (req, res, next) => {
         bankAccountNum: accountNumber,
       });
     }
-    res.status(200).json({ message: 'Success', payoutRequests: data });
+    res.status(200).json({ message: "Success", payoutRequests: data });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
   }
 };
 exports.getInvoices = async (req, res, next) => {
   try {
     const invoices = await FarmerMonthInvoice.find({
       farmerId: req.user._id,
-      status: 'Closed',
+      status: "Closed",
     }).sort({ _id: -1 });
     const data = [];
     for (let invoice of invoices) {
@@ -513,9 +513,277 @@ exports.getInvoices = async (req, res, next) => {
         year: invoice.date.year,
       });
     }
-    res.status(200).json({ message: 'Success', invoices: data });
+    res.status(200).json({ message: "Success", invoices: data });
   } catch (err) {
     logger(err);
-    res.status(500).json({ message: 'Something went wrong' });
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+exports.getFarmerReports = async (req, res, next) => {
+  try {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // Adding 1 to match the JavaScript month indexing (0-11)
+    const userEmail = req.user.email;
+    const monthlyIncomes = [];
+    const months = [];
+    for (let i = 1; i <= 4; i++) {
+      //const targetDate = new Date(currentDate.getFullYear(), currentMonth - i, 1);
+      const targetYear = currentDate.getFullYear();
+      const targetMonth = currentMonth - i;
+
+      if (targetMonth <= 0) {
+        targetMonth += 12;
+        targetYear -= 1;
+      }
+      const invoice = await FarmerMonthInvoice.findOne({
+        farmerEmail: userEmail,
+        "date.month": targetMonth,
+        "date.year": targetYear,
+      });
+
+      const totalEarnings = invoice ? invoice.totalEarnings : 0;
+      const date = new Date();
+      date.setMonth(targetMonth - 1);
+      const shortMonthName = date.toLocaleString("en-US", { month: "short" });
+      monthlyIncomes.push({
+        x: shortMonthName,
+        y: totalEarnings,
+      });
+      months.push(shortMonthName);
+    }
+    months.reverse();
+    monthlyIncomes.reverse();
+    let message;
+    const currentMonthY = monthlyIncomes[monthlyIncomes.length - 1].y; // Get the y value of the current month (May)
+    const previousMonthY = monthlyIncomes[monthlyIncomes.length - 2].y; // Get the y value of the previous month (Apr)
+
+    const words = ["Great job", "Keep it up", "Way to go", "Good work","Fantastic work","Outstanding","Wow! we are impressed","You have made quite an improvement","You are on the right track"];
+    const giveUpWords=["Hang in there","Don't give up","Keep pushing","Keep fighting!","Stay strong","Come on! You can do it!"]
+    let barChartGood=false; 
+    function getRandomWord(pool) {
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      return pool[randomIndex];
+    }
+    
+    
+
+  
+
+    if (previousMonthY > 0) {
+      const percentageChange =
+        ((currentMonthY - previousMonthY) / previousMonthY) * 100;
+       message =
+        percentageChange > 0
+          ?`${getRandomWord(words)}! Your income has increased by Rs.${percentageChange.toFixed(
+              2
+            )}% than the month berfore`
+          :  `${getRandomWord(giveUpWords)} Last month income has decreased by Rs.${Math.abs(
+              percentageChange
+            ).toFixed(2)}% than the month berfore`;
+
+          if(percentageChange>0){
+               barChartGood=true;
+          }
+          else{
+            barChartGood=false;
+          }
+    }
+    else{
+     
+      
+      message =
+        currentMonthY > 0
+          ? `${getRandomWord(words)}! Your income has increased by Rs.${currentMonthY.toFixed(
+              2
+            )} than the month berfore`
+          : `${getRandomWord(giveUpWords)} Last month income has decreased by Rs.${Math.abs(
+              currentMonthY
+            ).toFixed(2)} than the month berfore`;
+
+          if(currentMonthY>0){
+              barChartGood=true;
+         }
+         else{
+           barChartGood=false;
+         }
+            
+    }
+    //console.log(message);
+    const farmer = await User.findOne({
+      farmerEmail: userEmail,
+    });
+    const farmerId = farmer._id;
+    Product.find({ farmerId })
+      .sort({ overallRating: -1 })
+      .exec(async (err, products) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        if (products.length === 0) {
+          console.log("No products found for the selected farmer.");
+          return;
+        }
+
+        const productDetails = await Promise.all(
+          products.map(async (product) => {
+            const farmer = await User.findById(product.farmer);
+            //console.log(farmer)
+
+            return {
+              _id: product._id,
+              price: product.price,
+              title: product.title,
+              imageUrl: product.imageUrls[0],
+              overallRating: product.overallRating,
+              unit: product.unit,
+              likes: product.likes,
+            };
+          })
+        );
+        //console.log(productDetails);
+        const pieChartData = [];
+        const titles = [];
+        const colors = [];
+
+        const previousMonth = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth() - 1,
+          1
+        );
+
+        FarmerMonthInvoice.findOne({
+          farmerEmail: req.user.email,
+          "date.month": previousMonth.getMonth() + 1,
+          "date.year": previousMonth.getFullYear(),
+        })
+          .populate("orders")
+          .exec(async (err, monthlyInvoice) => {
+            if (err) {
+              console.error(err);
+              return;
+            }
+            //console.log(monthlyInvoice);
+            
+            if (!monthlyInvoice) {
+              console.log("No monthly invoice found for the previous month.");
+              return;
+            }
+
+            const productEarnings = {};
+            const orderList = monthlyInvoice.orders;
+            const totalIncomeOrders = monthlyInvoice.totalEarnings;
+            const totalEarnings = monthlyInvoice.totalEarnings;
+            let totalDel = 0;
+            const itemDetails = [];
+            for (const order of orderList) {
+              const ord = await Order.findOne({ _id: order });
+              const items = ord.items;
+
+              //console.log(items);
+
+              for (const item of items) {
+                const itemId = item.itemId;
+                const price = item.uPrice;
+                const qty = item.qty;
+                const totalIncome = price * qty;
+                totalDel = totalDel + ord.totalDeliveryCharge;
+
+                const productId = itemId;
+                const product = await Product.findById(productId);
+
+                // Retrieve item title and unit from the product
+                const id = product._id;
+                const itemTitle = product.title;
+                const itemUnit = product.unit;
+                const color = product.imageUrls[0].placeholder;
+                //console.log(color)
+                itemDetails.push({
+                  _id: id,
+                  title: itemTitle,
+                  unit: itemUnit,
+                  qty: qty,
+                  color: color,
+                  price: price,
+                  totalIncome: totalIncome,
+                });
+              }
+            }
+            // console.log(totalDel)
+
+            const result = itemDetails.reduce((acc, curr) => {
+              const existingProduct = acc.find(
+                (item) => item.title === curr.title
+              );
+              if (existingProduct) {
+                existingProduct.totalIncome += curr.totalIncome;
+              } else {
+                acc.push({
+                  title: curr.title,
+                  totalIncome: curr.totalIncome,
+                  color: curr.color,
+                });
+              }
+
+              return acc;
+            }, []);
+            let i = 0;
+            const colorScale = [
+              "tomato",
+              "orange",
+              "gold",
+              "cyan",
+              "navy",
+              "cornflowerblue",
+              "lightgreen",
+            ];
+            const pieChartWords=["Just so you're aware","so you know","for your attention","We would like to bring to your attention","For your information","We could see that"]
+            const pieChartDataSorted=result.sort((a, b) => b.totalIncome - a.totalIncome);
+            const highestIncomeProduct=pieChartDataSorted[0].title
+            const pieChartMessage=`${getRandomWord(pieChartWords)} ${highestIncomeProduct} is the highest income generating product for you.`
+            //console.log(highestIncomeProduct)
+
+            for (const resultItem of result) {
+              // console.log(resultItem.totalIncome)
+              // console.log(totalIncomeOrders)
+              // console.log(totalDel)
+              let percentage =
+                (resultItem.totalIncome / (totalIncomeOrders - totalDel)) * 100;
+              let percentageString = percentage.toString() + "%";
+              pieChartData.push({
+                x: percentageString,
+                y: resultItem.totalIncome,
+              });
+              titles.push({
+                name: resultItem.title,
+                symbol: { fill: colorScale[i], size: 8 },
+              });
+              colors.push(resultItem.color);
+              i++;
+            }
+
+           // console.log(pieChartData);
+            
+           // console.log(titles);
+           // console.log(colors);
+            res.status(200).json({
+              message: "Success Reports path",
+              barchart: monthlyIncomes,
+              months: months,
+              bestOverallProduct: productDetails,
+              pieChartData: pieChartData,
+              colors: colors,
+              titles: titles,
+              barChartMessage:message,
+              barchartGood:barChartGood,
+              pieChartMessage:pieChartMessage
+            });
+          });
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Unsuccessful" });
   }
 };
