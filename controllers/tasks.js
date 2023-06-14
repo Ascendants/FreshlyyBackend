@@ -8,22 +8,20 @@ const mongoose = require('mongoose');
 const customerController = require('../controllers/customer');
 const farmerController = require('../controllers/farmer');
 const DailyTaskReport = require('../models/DailyTaskReport');
+const Config = require('../models/Config');
+const Coupon = require('../models/Coupon');
+const { sendLoyaltyLevelUpNotifs } = require('./notifications');
+const FarmerPayment = require('../models/FarmerPayment');
 
-exports.cancelOrdersNotPaid = async () => {
-  const orders = await Order.find({
-    'orderUpdate.failed': { $eq: null },
-    'orderUpdate.payment': { $eq: null },
-    'orderUpdate.placed': { $ne: null },
-    'orderUpdate.cancelled': { $eq: null },
-    'orderUpdate.closed': { $eq: null },
-  }).sort({ _id: -1 });
-  for (let order of orders) {
-    const hoursAfterPlaced = (Date.now() - order.orderUpdate.placed) / 36e5;
-    if (hoursAfterPlaced > 12) {
-      await customerController.cancelOrder(order._id);
+async function generateCouponCode() {
+  while (true) {
+    const code = 'CP' + Math.floor(Math.random() * 1000000);
+    const coupon = await Coupon.findOne({ cCode: code });
+    if (!coupon) {
+      return code;
     }
   }
-};
+}
 function getPreviousMonth(date) {
   const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1);
   const year = prevMonth.getFullYear();
@@ -41,7 +39,33 @@ function appendToReport(
     message +
     '\n';
 }
-exports.runDailyTasks = async () => {
+exports.runHourlyTasks = async () => {
+  const session = await mongoose.startSession();
+  try {
+    const report = new DailyTaskReport({ report: '' });
+    const date = new Date();
+    appendToReport(report, 'Freshlyy Hourly Tasks');
+    appendToReport(report);
+    appendToReport(report, 'Cancelling unpaid settlements');
+    appendToReport(report);
+    await cancelUnpaidSettlements(session, date, report);
+    appendToReport(report, 'Done Cancelling unpaid settlements');
+    appendToReport(report);
+    await session.endSession();
+    appendToReport(report, 'Cancelling unpaid orders');
+    appendToReport(report);
+    await this.cancelOrdersNotPaid(report);
+    appendToReport(report, 'Done Cancelling unpaid orders');
+    appendToReport(report);
+    appendToReport(report);
+    appendToReport(report, 'Done Running Hourly Tasks');
+    report.save();
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.runTasks = async () => {
   const session = await mongoose.startSession();
   try {
     const report = new DailyTaskReport({ report: '' });
@@ -65,7 +89,80 @@ exports.runDailyTasks = async () => {
     await closeInvoicesAtMonthEnd(session, date, report);
     appendToReport(report, 'Done Clearing Invoices');
     appendToReport(report);
+    appendToReport(report, 'Cancelling unpaid settlements');
+    appendToReport(report);
+    await cancelUnpaidSettlements(session, date, report);
+    appendToReport(report, 'Done Cancelling unpaid settlements');
+    appendToReport(report);
+    await session.endSession();
+    appendToReport(report, 'Cancelling unpaid orders');
+    appendToReport(report);
+    await this.cancelOrdersNotPaid(report);
+    appendToReport(report, 'Done Cancelling unpaid orders');
+    appendToReport(report);
 
+    appendToReport(report);
+    appendToReport(report, 'Done Running Daily Tasks');
+    report.save();
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.runDailyTasks = async () => {
+  const session = await mongoose.startSession();
+  try {
+    const report = new DailyTaskReport({ report: '' });
+    const date = new Date();
+    appendToReport(report, 'Start Clearning Funds for Orders');
+    appendToReport(report);
+    await clearFundsForOrder(session, date, report);
+    appendToReport(report, 'Done Clearing Funds for Orders');
+    appendToReport(report);
+
+    appendToReport(report, 'Start Suspending Farmers who havent paid');
+    appendToReport(report);
+
+    await suspendFarmersWhoHaventPaid(session, date, report);
+    appendToReport(report);
+    appendToReport(report, 'Done Suspending Farmers who havent paid');
+    appendToReport(report, 'Done Running Daily Tasks');
+    report.save();
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.runMonthly1stTasks = async () => {
+  const session = await mongoose.startSession();
+  try {
+    const report = new DailyTaskReport({ report: '' });
+    const date = new Date();
+    appendToReport(report, 'Freshlyy Monthly 1st Tasks');
+    appendToReport(report);
+    await resetLoyaltyPoints(session, date, report);
+    await session.endSession();
+
+    appendToReport(report);
+    appendToReport(report, 'Done Monthly 1st Tasks');
+    report.save();
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.runMonthly5thTasks = async () => {
+  const session = await mongoose.startSession();
+  try {
+    const report = new DailyTaskReport({ report: '' });
+    const date = new Date();
+
+    appendToReport(report, 'Start Clearing Invoices');
+    appendToReport(report);
+    await closeInvoicesAtMonthEnd(session, date, report);
+    appendToReport(report, 'Done Clearing Invoices');
+
+    appendToReport(report, 'Done Running Monthly 5th Tasks');
     report.save();
   } catch (err) {
     console.log(err);
@@ -114,7 +211,7 @@ async function clearFundsForOrder(session, date, report) {
       continue;
     }
     appendToReport(report, 'Order #' + order._id + ' is being processed');
-
+    let totalPayment = 0;
     let balanceToUpdate = 0;
     let cashOnDelivery = 0;
 
@@ -125,13 +222,16 @@ async function clearFundsForOrder(session, date, report) {
 
       if (payment.type == 'COD') {
         balanceToUpdate += order.commission * -1;
-        cashOnDelivery = payment.amount;
+        totalPayment = payment.amount;
+        cashOnDelivery += payment.amount;
         break;
       } else if (payment.type == 'Card') {
         balanceToUpdate +=
           order.totalPrice + order.totalDeliveryCharge - order.commission;
+        totalPayment += payment.amount;
         break;
       }
+
       // else if(payment.type=='Coupon') // coupon management
     }
     try {
@@ -141,6 +241,64 @@ async function clearFundsForOrder(session, date, report) {
           'orderUpdate.closed': date,
         }).session(session);
         appendToReport(report, 'Marked Order #' + order._id + ' as closed');
+
+        //updating loyalty points of customer
+        const user = await User.findById(order.customer).session(session);
+        const loyaltyScheme = (await Config.findOne({})).loyaltyScheme;
+        let existingLoyaltyLevel;
+        for (let loyaltyLevel of loyaltyScheme) {
+          if (
+            loyaltyLevel.minPoints <= user.customer.loyaltyPoints &&
+            loyaltyLevel.maxPoints >= user.customer.loyaltyPoints
+          ) {
+            existingLoyaltyLevel = loyaltyLevel;
+            break;
+          }
+        }
+        if (!existingLoyaltyLevel) {
+          existingLoyaltyLevel = { name: 'None' };
+        }
+        const newLoyaltyPoints =
+          user.customer.loyaltyPoints + Math.floor(totalPayment / 100);
+        let newLoyaltyLevel;
+        for (let loyaltyLevel of loyaltyScheme) {
+          if (
+            loyaltyLevel.minPoints <= newLoyaltyPoints &&
+            loyaltyLevel.maxPoints >= newLoyaltyPoints
+          ) {
+            newLoyaltyLevel = loyaltyLevel;
+            break;
+          }
+        }
+
+        await User.findByIdAndUpdate(order.customer, {
+          $inc: { 'customer.loyaltyPoints': Math.floor(totalPayment / 100) },
+        }).session(session);
+        if (
+          newLoyaltyLevel &&
+          newLoyaltyLevel.name != existingLoyaltyLevel.name
+        ) {
+          const code = await generateCouponCode();
+          const gift = new Coupon({
+            cCode: code,
+            type: 'Loyalty',
+            eDate: new Date().setDate(new Date().getDate() + 30),
+            percentage: newLoyaltyLevel.gift,
+            status: 'Active',
+          });
+          await gift.save({ session: session });
+
+          sendLoyaltyLevelUpNotifs(user, newLoyaltyLevel, gift.cCode);
+        }
+        appendToReport(
+          report,
+          'Added ' +
+            Math.floor(totalPayment / 100) +
+            ' Loyalty points to customer ' +
+            order.customer +
+            ' for order #' +
+            order._id
+        );
 
         const farmerInvoiceId = `${order.farmer}-${(orderDate.getMonth() + 1)
           .toString()
@@ -302,40 +460,90 @@ async function suspendFarmersWhoHaventPaid(session, date, report) {
 
 async function closeInvoicesAtMonthEnd(session, date, report) {
   //closing invoices at the end of month
-  if (date.getDate() == 5) {
-    appendToReport(
-      report,
-      'Today is the 5th of the month, closing invoices...'
-    );
-    const prevMonth = getPreviousMonth(date);
-    try {
-      await session.withTransaction(async () => {
-        appendToReport(report, 'Closing Company Invoices for ' + prevMonth);
-        await CompanyMonthInvoice.findOneAndUpdate(
-          { invoiceId: prevMonth },
-          {
-            status: 'Closed',
-          },
-          { session: session }
-        );
-        appendToReport(report, 'Closing Farmer Invoices for ' + prevMonth);
-        await FarmerMonthInvoice.updateMany(
-          {
-            invoiceId: { $regex: `.*${prevMonth}$`, $options: 'i' },
-          },
-          {
-            status: 'Closed',
-          },
-          { session: session }
-        );
-      });
-      appendToReport(report, 'Successfully Closed Invoices for ' + prevMonth);
-    } catch (err) {
-      appendToReport(
-        report,
-        'Error: Could not close Invoices for ' + prevMonth
+  appendToReport(report, 'Today is the 5th of the month, closing invoices...');
+  const prevMonth = getPreviousMonth(date);
+  try {
+    await session.withTransaction(async () => {
+      appendToReport(report, 'Closing Company Invoices for ' + prevMonth);
+      await CompanyMonthInvoice.findOneAndUpdate(
+        { invoiceId: prevMonth },
+        {
+          status: 'Closed',
+        },
+        { session: session }
       );
-      console.log(err);
-    }
+      appendToReport(report, 'Closing Farmer Invoices for ' + prevMonth);
+      await FarmerMonthInvoice.updateMany(
+        {
+          invoiceId: { $regex: `.*${prevMonth}$`, $options: 'i' },
+        },
+        {
+          status: 'Closed',
+        },
+        { session: session }
+      );
+    });
+    appendToReport(report, 'Successfully Closed Invoices for ' + prevMonth);
+  } catch (err) {
+    appendToReport(report, 'Error: Could not close Invoices for ' + prevMonth);
+    console.log(err);
   }
 }
+
+async function resetLoyaltyPoints(session, date, report) {
+  //reseting loyaltypoints at the end of month
+  appendToReport(
+    report,
+    'Today is the 1th of month, resetting loyalty points to 0...'
+  );
+  try {
+    await session.withTransaction(async () => {
+      await User.updateMany(
+        { 'customer.loyaltyPoints': { $gt: 0 } },
+        { 'customer.loyaltyPoints': 0 },
+        { session: session }
+      );
+    });
+    appendToReport(report, 'Successfully reset loyalty points.');
+  } catch (err) {
+    appendToReport(report, 'Error: Could not reset loyalty points');
+    console.log(err);
+  }
+}
+
+async function cancelUnpaidSettlements(session, date, report) {
+  try {
+    await session.withTransaction(async () => {
+      const unpaidSettlements = await FarmerPayment.find({
+        status: 'Pending',
+      });
+      for (let settlement of unpaidSettlements) {
+        const hoursAfterPlaced = (Date.now() - settlement.createdDate) / 36e5;
+        if (hoursAfterPlaced > 1) {
+          settlement.status = 'Failed';
+          await settlement.save({ session: session });
+          appendToReport(report, `Cancelled settlement ${settlement._id}`);
+        }
+      }
+    });
+  } catch (err) {
+    appendToReport(report, 'Error: Could not cancel unpaid settlements');
+    console.log(err);
+  }
+}
+exports.cancelOrdersNotPaid = async (report) => {
+  const orders = await Order.find({
+    'orderUpdate.failed': { $eq: null },
+    'orderUpdate.payment': { $eq: null },
+    'orderUpdate.placed': { $ne: null },
+    'orderUpdate.cancelled': { $eq: null },
+    'orderUpdate.closed': { $eq: null },
+  }).sort({ _id: -1 });
+  for (let order of orders) {
+    const hoursAfterPlaced = (Date.now() - order.orderUpdate.placed) / 36e5;
+    if (hoursAfterPlaced > 12) {
+      await customerController.cancelOrder(order._id);
+      appendToReport(report, `Cancelled order ${order._id}`);
+    }
+  }
+};

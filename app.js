@@ -17,7 +17,6 @@ app.options('*', cors());
 app.use(bodyParser.json({ type: 'application/json' }));
 const User = require('./models/User');
 const Config = require('./models/Config');
-
 const publicRoutes = require('./routes/public');
 const customerRoutes = require('./routes/customer');
 const farmerRoutes = require('./routes/farmer');
@@ -25,6 +24,7 @@ const adminRoutes = require('./routes/admin');
 const errorController = require('./controllers/error');
 const taskController = require('./controllers/tasks');
 const Product = require('./models/Product');
+const Order = require('./models/Order');
 
 //put your routes here
 app.use('/', async (req, res, next) => {
@@ -49,6 +49,20 @@ app.use('/farmer', farmerRoutes);
 app.use('/admin', adminRoutes);
 
 
+// app.use('/test-notification', async (req, res, next) => {
+//   const { sendPushNotification } = require('./controllers/notifications');
+//   await sendPushNotification(
+//     req.user,
+//     {
+//       title: 'Test Notification',
+//       body: 'This is a test notification used to test.',
+//     },
+//     true
+//   );
+//   // await Order.updateMany({}, { customer: req.user._id });
+//   res.status(200).json({ message: 'Success' });
+// });
+
 app.use(errorController.get404);
 
 mongoose.set('strictQuery', true);
@@ -56,7 +70,7 @@ mongoose
   .connect(process.env.MONGO)
   .then((result) => {
     console.log('Ready');
-    taskController.runDailyTasks();
+    // taskController.runTasks();
     app.listen(process.env.PORT);
   })
   .catch((err) => console.log(err));

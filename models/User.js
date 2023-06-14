@@ -127,10 +127,15 @@ const userSchema = new Schema({
       },
       saleLocation: {
         type: Location,
+        default: {
+          latitude: 6.841454,
+          longitude: 79.964708,
+          name: 'My Warehouse',
+        },
       },
       followers: {
         type: [ObjectId],
-        min: null,
+        default: [],
       },
       status: {
         type: String,
@@ -144,7 +149,10 @@ const userSchema = new Schema({
         default: 'Active',
         enum: ['Active', 'Suspended'],
       },
-      bankAccount: BankAccount,
+      bankAccount: {
+        type: BankAccount,
+        default: null,
+      },
     },
     { _id: false }
   ),
@@ -160,7 +168,59 @@ const userSchema = new Schema({
         type: [ObjectId],
         min: null,
       },
+      loyaltyPoints: {
+        type: Number,
+        required: true,
+        default: 0,
+      },
+      coupons: {
+        type: [ObjectId],
+      },
+      usedCoupons: {
+        type: [ObjectId],
+      },
       cart: [
+        new Schema(
+          {
+            farmer: {
+              type: ObjectId,
+              required: true,
+            },
+            distance: {
+              type: Number,
+              required: true,
+              default: 0,
+            },
+            costPerKM: {
+              type: Number,
+              required: true,
+              default: 0,
+            },
+            items: [
+              new Schema(
+                {
+                  item: {
+                    type: ObjectId,
+                    required: true,
+                  },
+                  qty: {
+                    type: Number,
+                    required: true,
+                  },
+                  dateAdded: {
+                    type: Date,
+                    required: true,
+                    default: () => new Date(),
+                  },
+                },
+                { _id: false }
+              ),
+            ],
+          },
+          { _id: false }
+        ),
+      ],
+      wishList: [
         new Schema(
           {
             farmer: {
@@ -209,6 +269,11 @@ const userSchema = new Schema({
     required: true,
     default: 'Customer',
     enum: ['Customer', 'Farmer', 'Admin', 'SAdmin'],
+  },
+  pushToken: {
+    type: String,
+    required: true,
+    default: 'null',
   },
   dateAdded: {
     type: Date,
