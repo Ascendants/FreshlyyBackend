@@ -48,7 +48,6 @@ app.use('/customer', customerRoutes);
 app.use('/farmer', farmerRoutes);
 app.use('/admin', adminRoutes);
 
-
 // app.use('/test-notification', async (req, res, next) => {
 //   const { sendPushNotification } = require('./controllers/notifications');
 //   await sendPushNotification(

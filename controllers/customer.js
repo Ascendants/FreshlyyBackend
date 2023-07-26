@@ -658,8 +658,9 @@ exports.getCart = async (req, res, next) => {
 
 exports.postCart = async (req, res) => {
   try {
-    let { productId, quantity } = req.body;
+    let { productId, quantity, distance } = req.body;
     quantity = parseFloat(quantity);
+    distance = parseFloat(distance);
     const product = await Product.findById(productId);
     const cart = req.user.customer.cart;
 
@@ -696,11 +697,11 @@ exports.postCart = async (req, res) => {
       req.user.save();
       return res.status(200).json({ message: 'Success' });
     }
-
+    const farmerUser = await User.findById(product.farmer);
     cart.push({
       farmer: product.farmer,
-      distance: 3,
-      costPerKM: 200,
+      distance: distance,
+      costPerKM: farmerUser.farmer.deliveryCharge,
       items: [
         {
           item: product._id,

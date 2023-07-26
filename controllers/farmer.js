@@ -1239,7 +1239,6 @@ exports.getFarmerReports = async (req, res, next) => {
           currentDate.getMonth() - 1,
           1
         );
-
         FarmerMonthInvoice.findOne({
           farmerEmail: req.user.email,
           'date.month': previousMonth.getMonth() + 1,
